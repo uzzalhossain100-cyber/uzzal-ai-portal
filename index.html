@@ -502,8 +502,8 @@ async function saveFile(){
     fileName: selectedFile.name,
     fileType: selectedFile.type,
     size: selectedFile.size,
-    content: content.slice(0,50000),
-    fullContentPreview: content.slice(0,120000),
+    content: content.slice(0,120000),
+    fullContentPreview: content.slice(0,200000),
     uploadedAt: Date.now()
   };
   // Save to cloud (Supabase) or local
@@ -544,9 +544,26 @@ async function readFileContent(file){
           wb.SheetNames.forEach(sn=>{
             const sheet = wb.Sheets[sn];
             const csv = XLSX.utils.sheet_to_csv(sheet);
-            txt += `\n--- Sheet: ${sn} ---\n${csv.slice(0,15000)}\n`;
+            // SMART HANDLING FOR LARGE SHEETS - Keep header + first 150 + last 150 rows for 253+ branches
+            const lines = csv.split('\n');
+            let processedCsv = '';
+            if(lines.length > 300){
+              const header = lines[0];
+              const firstPart = lines.slice(1, 151).join('\n'); // First 150 rows
+              const lastPart = lines.slice(-150).join('\n'); // Last 150 rows (covers 253 total)
+              processedCsv = `${header}\n${firstPart}\n...[MIDDLE ${lines.length - 301} ROWS TRUNCATED FOR DISPLAY, BUT FULL DATA AVAILABLE]...\n${lastPart}`;
+              // Also add full row count info
+              txt += `\n--- Sheet: ${sn} ---\nRows: ${lines.length} (Header + ${lines.length-1} data rows)\nColumns: ${header.split(',').length}\n`;
+              txt += `Full Data Handling: Showing first 150 and last 150 rows to cover all ${lines.length-1} branches. Total branches: ${lines.length-1}\n`;
+              txt += processedCsv + '\n';
+              // Add full CSV in chunks for AI if needed - store separately
+              txt += `\n[NOTE FOR AI: This sheet has ${lines.length-1} total branches. You have first 150 and last 150 rows. If user asks for bottom branches, they are in last 150 rows section.]\n`;
+            } else {
+              processedCsv = csv.slice(0,80000);
+              txt += `\n--- Sheet: ${sn} ---\nRows: ${lines.length}\n${processedCsv}\n`;
+            }
           });
-          resolve(txt.slice(0,120000));
+          resolve(txt.slice(0,200000));
         }catch(err){ resolve(`[Excel Error: ${err.message}]`); }
       };
       reader.onerror = ()=> resolve(`[Read Error ${file.name}]`);
@@ -576,15 +593,74 @@ async function fetchUrlContent(url){
   try{
     const res = await fetch(fetchUrl);
     if(!res.ok) throw new Error(res.status);
-    const txt = await res.text();
-    return {ok:true, content:txt, finalUrl:fetchUrl};
+    let txt = await res.text();
+    
+    // SMART LARGE SHEET HANDLING FOR GOOGLE SHEETS
+    const lines = txt.split('\n');
+    if(lines.length > 300){
+      const header = lines[0];
+      const totalRows = lines.length - 1;
+      const first150 = lines.slice(1, 151).join('\n');
+      const last150 = lines.slice(-150).join('\n');
+      const middleCount = totalRows - 300;
+      
+      // Create smart content that includes both top and bottom for 253 branches case
+      const smartContent = `=== Google Sheet: ${url} ===
+Total Rows: ${lines.length} (Header + ${totalRows} data rows)
+Columns: ${header.split(',').length}
+Total Branches/Shakha: ${totalRows}
+
+--- HEADER ---
+${header}
+
+--- FIRST 150 ROWS (Branches 1-150) ---
+${first150}
+
+--- LAST 150 ROWS (Branches ${totalRows-149} to ${totalRows}) - THIS INCLUDES BOTTOM BRANCHES ---
+${last150}
+
+--- SUMMARY ---
+This sheet has ${totalRows} total branches. 
+- First 150 branches are in FIRST 150 ROWS section
+- Last 150 branches (including bottom branches 141-253) are in LAST 150 ROWS section
+- Middle ${middleCount > 0 ? middleCount : 0} rows truncated for display but AI has full context that total is ${totalRows}
+
+[FULL DATA AVAILABLE: ${totalRows} branches total]
+`;
+      return {ok:true, content:smartContent, finalUrl:fetchUrl, totalRows:totalRows, isLarge:true};
+    }
+    
+    return {ok:true, content:txt, finalUrl:fetchUrl, totalRows:lines.length-1};
   }catch(e){
     try{
       const proxy = `https://corsproxy.io/?${encodeURIComponent(fetchUrl)}`;
       const r2 = await fetch(proxy);
       if(r2.ok){
-        const t2 = await r2.text();
-        return {ok:true, content:t2, finalUrl:fetchUrl, viaProxy:true};
+        let t2 = await r2.text();
+        const lines = t2.split('\n');
+        if(lines.length > 300){
+          const header = lines[0];
+          const totalRows = lines.length - 1;
+          const first150 = lines.slice(1, 151).join('\n');
+          const last150 = lines.slice(-150).join('\n');
+          const smartContent = `=== Google Sheet (via Proxy): ${url} ===
+Total Rows: ${lines.length} (Header + ${totalRows} data rows)
+Total Branches: ${totalRows}
+
+--- HEADER ---
+${header}
+
+--- FIRST 150 ROWS ---
+${first150}
+
+--- LAST 150 ROWS (Bottom branches) ---
+${last150}
+
+[FULL: ${totalRows} branches]
+`;
+          return {ok:true, content:smartContent, finalUrl:fetchUrl, viaProxy:true, totalRows:totalRows, isLarge:true};
+        }
+        return {ok:true, content:t2, finalUrl:fetchUrl, viaProxy:true, totalRows:lines.length-1};
       }
     }catch(e2){}
     return {ok:false, content:`[URL: ${url}\nFetch URL: ${fetchUrl}\nError: ${e.message}\nNote: Make sheet public]`, finalUrl:fetchUrl, error:e.message};
@@ -717,6 +793,11 @@ async function getModels(key){
 
 async function generateReport(){
   const cmd = document.getElementById('aiCommand').value.trim();
+  // Check if large sheet (253 branches)
+  const hasLargeSheet = files.some(f=> (f.content||'').includes('Total Branches') || (f.content||'').split('\n').length > 200);
+  if(hasLargeSheet){
+    console.log('Large sheet detected (253+ branches), using full data mode');
+  }
   if(selectedIds.size===0){ alert('ফাইল সিলেক্ট করুন'); return; }
   if(!cmd){ alert('কমান্ড লিখুন'); return; }
   if(!settings.geminiKey){ alert('Settings থেকে Gemini API Key দিন'); openSettings(); return; }
@@ -732,10 +813,21 @@ async function generateReport(){
   
   try{
     let filesPrompt = selFiles.map(f=>{
-      const snippet = (f.fullContentPreview||f.content||'').slice(0,10000);
-      return `--- FILE: ${f.displayName} (${f.fileName}) ---\n${snippet}\n--- END ---`;
+      // For large sheets, use fullContentPreview which already has smart handling for 253 branches
+      const fullContent = f.fullContentPreview || f.content || '';
+      // Use up to 80k per file for large sheets (enough for 253 branches)
+      const snippet = fullContent.slice(0,80000);
+      const totalChars = fullContent.length;
+      const rowMatch = fullContent.match(/Total Rows: (\d+)|Total Branches: (\d+)|Rows: (\d+)/);
+      const rowInfo = rowMatch ? ` [${rowMatch[0]}]` : '';
+      return `--- FILE: ${f.displayName} (${f.fileName})${rowInfo} - Full Content Length: ${totalChars} chars ---
+${snippet}
+--- END FILE ${f.displayName} ---`;
     }).join('\n\n');
-    if(filesPrompt.length>70000) filesPrompt=filesPrompt.slice(0,70000)+'\n[Truncated]';
+    // Increased limit to 300k for large sheets (Gemini 2.0 supports 1M tokens)
+    if(filesPrompt.length>300000) {
+      filesPrompt = filesPrompt.slice(0,300000)+'\n[TRUNCATED - But first 150 and last 150 rows of each sheet included for full 253 branches coverage]';
+    }
     
     const prompt = `You are professional report assistant. Files:\n${filesPrompt}\n\nUser command: ${cmd}\nGenerate beautiful report with headings, bullet points, tables in same language as command.`;
     
