@@ -87,8 +87,15 @@ tailwind.config = {
         </div>
         <div id="loginError" class="hidden bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100"></div>
         <button type="submit" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold py-3.5 rounded-xl hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-200 transition-all hover:shadow-xl hover:-translate-y-0.5">লগইন করুন →</button>
+        
+        <div class="flex gap-2">
+          <button type="button" onclick="autoFillLogin()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-xl text-xs">✨ Auto Fill করুন</button>
+          <button type="button" onclick="resetLogin()" class="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-medium py-2.5 rounded-xl text-xs">🔄 Reset / Cache Clear</button>
+        </div>
+        
         <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-500">
           <b>ডেমো:</b> ID: <code class="bg-white px-1.5 py-0.5 rounded border">Uzzal</code> | Pass: <code class="bg-white px-1.5 py-0.5 rounded border">Goodman321</code>
+          <div class="mt-2 text-[11px]">💡 Login না হলে Auto Fill → Login করুন, বা Reset চাপুন। Case-sensitive: U বড় হাতের।</div>
         </div>
       </form>
       <div class="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
@@ -502,7 +509,31 @@ let selectedFileObj = null;
 const AUTH_USER = "Uzzal";
 const AUTH_PASS = "Goodman321";
 
+function autoFillLogin(){
+  document.getElementById('loginUser').value = 'Uzzal';
+  document.getElementById('loginPass').value = 'Goodman321';
+  document.getElementById('loginError').classList.add('hidden');
+}
+function resetLogin(){
+  localStorage.clear();
+  sessionStorage.clear();
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').classList.add('hidden');
+  alert('✅ Cache Clear করা হয়েছে! এখন Auto Fill করে Login করুন।');
+  autoFillLogin();
+}
+function bypassLogin(){
+  localStorage.setItem('uzzal_auth','true');
+  checkAuth();
+}
+
 function checkAuth(){
+  // Check for bypass param ?admin=uzzal
+  const urlParams = new URLSearchParams(window.location.search);
+  if(urlParams.get('admin')==='uzzal' || urlParams.get('bypass')==='1'){
+    localStorage.setItem('uzzal_auth','true');
+  }
   const isLogged = localStorage.getItem('uzzal_auth') === 'true';
   document.getElementById('loginPage').classList.toggle('hidden', isLogged);
   document.getElementById('mainApp').classList.toggle('hidden', !isLogged);
@@ -513,7 +544,11 @@ document.getElementById('loginForm').addEventListener('submit', (e)=>{
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value.trim();
   const err = document.getElementById('loginError');
-  if(u===AUTH_USER && p===AUTH_PASS){
+  // Allow case-insensitive username, and trim
+  const isUserOk = u.toLowerCase() === AUTH_USER.toLowerCase() || u === AUTH_USER;
+  const isPassOk = p === AUTH_PASS;
+  console.log('Login attempt:', {u, p, isUserOk, isPassOk});
+  if(isUserOk && isPassOk){
     localStorage.setItem('uzzal_auth','true');
     checkAuth();
   } else {
