@@ -8,6 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -184,8 +187,8 @@ tailwind.config = {
             <div class="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
             <h3 class="font-semibold text-lg relative">AI দিয়ে কীভাবে রিপোর্ট বানাবেন?</h3>
             <ol class="mt-4 space-y-3 text-sm text-violet-100 relative list-decimal list-inside">
-              <li>ফাইল আপলোড পেজে গিয়ে নাম দিয়ে ফাইল সেভ করুন</li>
-              <li>AI রিপোর্ট পেজে এক বা একাধিক ফাইল সিলেক্ট করুন</li>
+              <li>ফাইল আপলোড বা URL যোগ করুন (Google Sheet, Website)</li>
+              <li>AI রিপোর্ট পেজে এক বা একাধিক ফাইল/URL সিলেক্ট করুন</li>
               <li>বাংলায় বা ইংরেজিতে কমান্ড লিখুন (যেমন: "বিক্রয়ের সারাংশ দাও")</li>
               <li>রিপোর্ট তৈরি করুন বাটনে ক্লিক করুন</li>
             </ol>
@@ -204,56 +207,97 @@ tailwind.config = {
       </div>
     </section>
 
-    <!-- UPLOAD TAB -->
+    <!-- UPLOAD TAB WITH FILE + URL -->
     <section id="tab-upload" class="hidden space-y-6">
       <div>
-        <h1 class="text-2xl font-bold">📁 ফাইল আপলোড ম্যানেজমেন্ট</h1>
-        <p class="text-slate-500 text-sm mt-1">যেকোনো ফাইল (PDF, Excel, Word, Text, Image) আপলোড করে নাম দিয়ে সেভ করুন</p>
+        <h1 class="text-2xl font-bold">📁 ফাইল ও URL ম্যানেজমেন্ট</h1>
+        <p class="text-slate-500 text-sm mt-1">ফাইল আপলোড করুন বা যেকোনো URL (Google Sheet, Website, PDF Link) যোগ করে সেভ করুন - দুটো থেকেই AI রিপোর্ট হবে</p>
       </div>
 
       <div class="grid lg:grid-cols-[1fr_1.2fr] gap-6">
-        <!-- Upload Form -->
-        <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6">
-          <h3 class="font-semibold mb-4">নতুন ফাইল আপলোড</h3>
-          <form id="uploadForm" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium mb-1.5">রিপোর্ট / ফাইলের নাম *</label>
-              <input id="fileDisplayName" type="text" placeholder="যেমন: জানুয়ারি বিক্রয় রিপোর্ট ২০২৬" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none text-sm" required>
-              <p class="text-xs text-slate-400 mt-1">এই নামটি AI রিপোর্ট পেজে দেখা যাবে</p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1.5">বিবরণ (ঐচ্ছিক)</label>
-              <input id="fileDesc" type="text" placeholder="সংক্ষিপ্ত বিবরণ..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none text-sm">
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1.5">ফাইল নির্বাচন *</label>
-              <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-violet-300 hover:bg-violet-50/50 transition cursor-pointer group">
-                <div class="w-12 h-12 mx-auto bg-violet-100 rounded-xl flex items-center justify-center text-violet-600 group-hover:scale-110 transition">📤</div>
-                <div class="mt-3 font-medium text-sm">ফাইল ড্র্যাগ করুন বা ক্লিক করে নির্বাচন করুন</div>
-                <div class="text-xs text-slate-400 mt-1">PDF, DOCX, XLSX, CSV, TXT, JPG, PNG - Max 10MB</div>
-                <input id="fileInput" type="file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.json,.png,.jpg,.jpeg,.webp">
-                <div id="selectedFileInfo" class="hidden mt-4 bg-white border border-slate-200 rounded-xl p-3 text-left">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">📄</div>
-                    <div class="flex-1 min-w-0">
-                      <div id="selFileName" class="text-sm font-medium truncate"></div>
-                      <div id="selFileMeta" class="text-xs text-slate-500"></div>
+        <!-- Upload Form with Tabs -->
+        <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+          <div class="flex border-b border-slate-100">
+            <button id="tabBtnFile" onclick="switchUploadTab('file')" class="flex-1 py-3 text-sm font-semibold bg-slate-900 text-white">📁 ফাইল আপলোড</button>
+            <button id="tabBtnUrl" onclick="switchUploadTab('url')" class="flex-1 py-3 text-sm font-medium bg-slate-50 text-slate-600 hover:bg-slate-100">🔗 URL যোগ করুন</button>
+          </div>
+          
+          <div class="p-6">
+            <!-- FILE TAB -->
+            <div id="uploadFileTab">
+              <h3 class="font-semibold mb-4">নতুন ফাইল আপলোড</h3>
+              <form id="uploadForm" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1.5">রিপোর্ট / ফাইলের নাম *</label>
+                  <input id="fileDisplayName" type="text" placeholder="যেমন: জানুয়ারি বিক্রয় রিপোর্ট ২০২৬" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none text-sm" required>
+                  <p class="text-xs text-slate-400 mt-1">এই নামটি AI রিপোর্ট পেজে দেখা যাবে</p>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1.5">বিবরণ (ঐচ্ছিক)</label>
+                  <input id="fileDesc" type="text" placeholder="সংক্ষিপ্ত বিবরণ..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none text-sm">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1.5">ফাইল নির্বাচন *</label>
+                  <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-violet-300 hover:bg-violet-50/50 transition cursor-pointer group">
+                    <div class="w-12 h-12 mx-auto bg-violet-100 rounded-xl flex items-center justify-center text-violet-600 group-hover:scale-110 transition">📤</div>
+                    <div class="mt-3 font-medium text-sm">ফাইল ড্র্যাগ করুন বা ক্লিক করে নির্বাচন করুন</div>
+                    <div class="text-xs text-slate-400 mt-1">✅ Excel (.xlsx) এখন পুরোপুরি সাপোর্ট করে! PDF, DOCX, CSV, TXT - Max 10MB</div>
+                    <input id="fileInput" type="file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.json,.png,.jpg,.jpeg,.webp">
+                    <div id="selectedFileInfo" class="hidden mt-4 bg-white border border-slate-200 rounded-xl p-3 text-left">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">📄</div>
+                        <div class="flex-1 min-w-0">
+                          <div id="selFileName" class="text-sm font-medium truncate"></div>
+                          <div id="selFileMeta" class="text-xs text-slate-500"></div>
+                        </div>
+                        <button type="button" onclick="clearSelectedFile()" class="text-slate-400 hover:text-red-500">✕</button>
+                      </div>
                     </div>
-                    <button type="button" onclick="clearSelectedFile()" class="text-slate-400 hover:text-red-500">✕</button>
                   </div>
                 </div>
-              </div>
+                <button type="submit" id="uploadBtn" class="w-full bg-slate-900 text-white font-semibold py-3 rounded-xl hover:bg-black transition flex items-center justify-center gap-2">
+                  <span>💾</span> সেভ করুন
+                </button>
+              </form>
             </div>
-            <button type="submit" id="uploadBtn" class="w-full bg-slate-900 text-white font-semibold py-3 rounded-xl hover:bg-black transition flex items-center justify-center gap-2">
-              <span>💾</span> সেভ করুন
-            </button>
-          </form>
+
+            <!-- URL TAB -->
+            <div id="uploadUrlTab" class="hidden">
+              <h3 class="font-semibold mb-1">🔗 URL / লিংক যোগ করুন</h3>
+              <p class="text-xs text-slate-500 mb-4">Google Sheet, Website, PDF Link, যেকোনো URL থেকে AI ডাটা নিয়ে রিপোর্ট বানাবে</p>
+              <form id="urlForm" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium mb-1.5">রিপোর্ট / URL এর নাম *</label>
+                  <input id="urlDisplayName" type="text" placeholder="যেমন: Google Sheet বিক্রয় ডাটা ২০২৬" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 outline-none text-sm" required>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1.5">URL / লিংক *</label>
+                  <input id="urlInput" type="url" placeholder="https://docs.google.com/spreadsheets/d/... বা https://example.com/data.pdf" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 outline-none text-sm font-mono" required>
+                  <div class="mt-2 bg-blue-50 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-700 space-y-1">
+                    <div><b>💡 Supported:</b></div>
+                    <div>• Google Sheets: লিংক পেস্ট করুন, অটো CSV তে Convert হবে</div>
+                    <div>• Website: যেকোনো ওয়েবসাইটের Text পড়বে</div>
+                    <div>• PDF Link: সরাসরি PDF এর Text পড়বে</div>
+                    <div>• CSV/JSON Link: সরাসরি ডাটা পড়বে</div>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium mb-1.5">বিবরণ (ঐচ্ছিক)</label>
+                  <input id="urlDesc" type="text" placeholder="এই URL এ কী আছে..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 outline-none text-sm">
+                </div>
+                <div id="urlFetchStatus" class="hidden p-3 rounded-xl text-xs"></div>
+                <button type="submit" id="urlBtn" class="w-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white font-semibold py-3 rounded-xl hover:from-emerald-700 hover:to-blue-700 transition flex items-center justify-center gap-2">
+                  <span>🔗</span> URL থেকে ডাটা নিয়ে সেভ করুন
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
 
         <!-- File List -->
         <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm flex flex-col max-h-[700px]">
           <div class="p-5 border-b border-slate-100 flex items-center justify-between gap-3">
-            <h3 class="font-semibold">সেভ করা ফাইলসমূহ (<span id="fileCount">0</span>)</h3>
+            <h3 class="font-semibold">সেভ করা ফাইল ও URL (<span id="fileCount">0</span>)</h3>
             <div class="flex gap-2">
               <input id="fileSearch" type="text" placeholder="সার্চ..." class="px-3 py-1.5 rounded-full border border-slate-200 text-xs w-32 focus:border-violet-500 outline-none">
               <button onclick="exportAllFiles()" class="text-xs px-3 py-1.5 bg-slate-100 rounded-full hover:bg-slate-200">Export</button>
@@ -580,6 +624,76 @@ function clearSelectedFile(){
   document.getElementById('selectedFileInfo').classList.add('hidden');
 }
 
+function switchUploadTab(tab){
+  const fileTab = document.getElementById('uploadFileTab');
+  const urlTab = document.getElementById('uploadUrlTab');
+  const fileBtn = document.getElementById('tabBtnFile');
+  const urlBtn = document.getElementById('tabBtnUrl');
+  if(tab==='file'){
+    fileTab.classList.remove('hidden');
+    urlTab.classList.add('hidden');
+    fileBtn.className = 'flex-1 py-3 text-sm font-semibold bg-slate-900 text-white';
+    urlBtn.className = 'flex-1 py-3 text-sm font-medium bg-slate-50 text-slate-600 hover:bg-slate-100';
+  } else {
+    fileTab.classList.add('hidden');
+    urlTab.classList.remove('hidden');
+    urlBtn.className = 'flex-1 py-3 text-sm font-semibold bg-slate-900 text-white';
+    fileBtn.className = 'flex-1 py-3 text-sm font-medium bg-slate-50 text-slate-600 hover:bg-slate-100';
+  }
+}
+
+async function fetchUrlContent(url){
+  // Handle Google Sheets
+  let fetchUrl = url;
+  let isGoogleSheet = false;
+  
+  // Convert Google Sheets link to CSV export
+  if(url.includes('docs.google.com/spreadsheets')){
+    isGoogleSheet = true;
+    try{
+      // Extract sheet ID
+      const match = url.match(r'/spreadsheets/d/([a-zA-Z0-9-_]+)');
+      if(match){
+        const sheetId = match[1];
+        // Try to get gid if present
+        const gidMatch = url.match(r'[#&]gid=([0-9]+)');
+        const gid = gidMatch ? gidMatch[1] : '0';
+        fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+      }
+    }catch(e){ console.warn('GSheet parse failed', e); }
+  }
+  
+  try{
+    // Try direct fetch
+    const res = await fetch(fetchUrl);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    return { success: true, content: text, finalUrl: fetchUrl, isGoogleSheet };
+  }catch(err){
+    // CORS error - try with corsproxy or return URL itself
+    console.warn('Direct fetch failed, trying cors proxy', err);
+    try{
+      // Try corsproxy.io (free)
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(fetchUrl)}`;
+      const res2 = await fetch(proxyUrl);
+      if(res2.ok){
+        const text2 = await res2.text();
+        return { success: true, content: text2, finalUrl: fetchUrl, isGoogleSheet, viaProxy: true };
+      }
+    }catch(e2){ console.warn('Proxy also failed', e2); }
+    
+    // Return URL as content if fetch fails (AI can still use URL as reference)
+    return { 
+      success: false, 
+      content: `[URL: ${url}\nFinal Fetch URL: ${fetchUrl}\nNote: Could not fetch content due to CORS. AI will use URL as reference. If this is Google Sheet, make sure sheet is public (Anyone with link can view).]`,
+      finalUrl: fetchUrl,
+      isGoogleSheet,
+      error: err.message
+    };
+  }
+}
+
+
 document.getElementById('uploadForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const displayName = document.getElementById('fileDisplayName').value.trim();
@@ -591,7 +705,18 @@ document.getElementById('uploadForm').addEventListener('submit', async (e)=>{
   btn.disabled = true; btn.innerHTML = "⏳ সেভ হচ্ছে...";
 
   try{
+    btn.innerHTML = "⏳ ফাইল পড়া হচ্ছে...";
     const content = await readFileContent(selectedFileObj);
+    console.log('Parsed content length:', content.length, 'Preview:', content.slice(0,500));
+    
+    // Show parsing success
+    if(content.includes('Parse Error') || content.includes('Failed to read')){
+      if(!confirm(`⚠️ ফাইল পার্স করতে সমস্যা হয়েছে:\n${content.slice(0,300)}\n\nতবুও সেভ করবেন? AI ভালো রিপোর্ট দিতে পারবে না।`)){
+        btn.disabled = false; btn.innerHTML = "<span>💾</span> সেভ করুন";
+        return;
+      }
+    }
+    
     const newFile = {
       id: Date.now().toString(),
       displayName,
@@ -599,8 +724,8 @@ document.getElementById('uploadForm').addEventListener('submit', async (e)=>{
       fileName: selectedFileObj.name,
       fileType: selectedFileObj.type || 'application/octet-stream',
       size: selectedFileObj.size,
-      content: content.slice(0, 20000), // limit for localStorage & AI prompt
-      fullContentPreview: content.slice(0, 100000),
+      content: content.slice(0, 50000), // Increased for better AI
+      fullContentPreview: content.slice(0, 120000),
       uploadedAt: Date.now()
     };
     files.push(newFile);
@@ -620,29 +745,210 @@ document.getElementById('uploadForm').addEventListener('submit', async (e)=>{
   }
 });
 
-function readFileContent(file){
-  return new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    if(file.type.startsWith('text/') || file.name.endsWith('.csv') || file.name.endsWith('.json') || file.name.endsWith('.txt') || file.name.endsWith('.md')){
-      reader.readAsText(file);
-      reader.onload = ()=> resolve(reader.result);
-      reader.onerror = ()=> reject(reader.error);
+// URL FORM HANDLER
+document.getElementById('urlForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const displayName = document.getElementById('urlDisplayName').value.trim();
+  const url = document.getElementById('urlInput').value.trim();
+  const desc = document.getElementById('urlDesc').value.trim();
+  if(!displayName || !url){ alert('নাম ও URL দিন'); return; }
+  
+  const btn = document.getElementById('urlBtn');
+  const statusEl = document.getElementById('urlFetchStatus');
+  btn.disabled = true;
+  btn.innerHTML = "⏳ URL থেকে ডাটা আনা হচ্ছে...";
+  statusEl.classList.remove('hidden');
+  statusEl.className = "p-3 rounded-xl text-xs bg-blue-50 border border-blue-200 text-blue-700";
+  statusEl.innerHTML = "⏳ URL থেকে ডাটা Fetch করা হচ্ছে... Google Sheet হলে CSV তে Convert করা হচ্ছে";
+  
+  try{
+    const result = await fetchUrlContent(url);
+    let content = result.content;
+    let size = content.length;
+    
+    if(result.success){
+      statusEl.className = "p-3 rounded-xl text-xs bg-emerald-50 border border-emerald-200 text-emerald-700";
+      statusEl.innerHTML = `✅ সফল! ${size} chars ডাটা পাওয়া গেছে ${result.isGoogleSheet ? '(Google Sheet → CSV)' : ''} ${result.viaProxy ? '(via Proxy)' : ''}`;
     } else {
-      // try read as text anyway, fallback to base64 info
-      reader.readAsText(file);
-      reader.onload = ()=>{
-        let txt = reader.result;
-        // if binary gibberish, keep metadata
-        if(txt.length>0 && /^[\x00-\x08\x0E-\x1F]/.test(txt.slice(0,100))){
-          resolve(`[Binary file: ${file.name}, type: ${file.type}, size: ${file.size} bytes. Content not directly readable. Please provide text-based files for best AI results.]`);
-        } else {
-          resolve(txt || `[File: ${file.name} - no text content extracted]`);
+      statusEl.className = "p-3 rounded-xl text-xs bg-amber-50 border border-amber-200 text-amber-700";
+      statusEl.innerHTML = `⚠️ CORS এর কারণে সরাসরি ডাটা আনা যায়নি, URL টি সেভ করা হলো। AI URL টি রেফারেন্স হিসেবে ব্যবহার করবে। Google Sheet হলে Public করুন (Anyone with link). Error: ${result.error || ''}`;
+      content = result.content + `\n\nOriginal URL: ${url}\nDescription: ${desc}`;
+    }
+    
+    const newFile = {
+      id: Date.now().toString(),
+      displayName,
+      description: desc || `URL: ${url}`,
+      fileName: url, // Store URL as fileName
+      fileType: 'url/link',
+      size: size,
+      content: content.slice(0, 50000),
+      fullContentPreview: content.slice(0, 120000),
+      uploadedAt: Date.now(),
+      isUrl: true,
+      originalUrl: url,
+      finalFetchUrl: result.finalUrl || url
+    };
+    
+    files.push(newFile);
+    localStorage.setItem('uzzal_files', JSON.stringify(files));
+    
+    document.getElementById('urlDisplayName').value = '';
+    document.getElementById('urlInput').value = '';
+    document.getElementById('urlDesc').value = '';
+    
+    renderFileList();
+    renderHome();
+    updateStats();
+    renderAISelector();
+    
+    setTimeout(()=>{
+      alert(`✅ URL সফলভাবে সেভ হয়েছে!\n\nনাম: ${displayName}\nডাটা: ${size} chars\n\nএখন AI রিপোর্ট পেজে গিয়ে এই URL সিলেক্ট করে রিপোর্ট বানাতে পারবেন।`);
+      statusEl.classList.add('hidden');
+    }, 500);
+    
+  } catch(err){
+    statusEl.className = "p-3 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700";
+    statusEl.innerHTML = `❌ Error: ${err.message}`;
+    alert('Error: '+err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "<span>🔗</span> URL থেকে ডাটা নিয়ে সেভ করুন";
+  }
+});
+
+
+async function readFileContent(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  const fileName = file.name;
+
+  // 1. EXCEL - XLSX, XLS (Most important for Income Statement)
+  if(['xlsx','xls'].includes(ext)){
+    return new Promise((resolve)=>{
+      const reader = new FileReader();
+      reader.readAsArrayBuffer(file);
+      reader.onload = (e)=>{
+        try{
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, {type:'array', cellDates:true});
+          let fullText = `=== Excel File: ${fileName} ===\n`;
+          fullText += `Sheets: ${workbook.SheetNames.join(', ')}\n`;
+          fullText += `Total Sheets: ${workbook.SheetNames.length}\n\n`;
+          
+          workbook.SheetNames.forEach((sheetName, idx)=>{
+            try{
+              const sheet = workbook.Sheets[sheetName];
+              // Convert to JSON for better AI understanding
+              const jsonData = XLSX.utils.sheet_to_json(sheet, {header:1, defval:"", blankrows:false});
+              if(jsonData.length===0) return;
+              
+              fullText += `\n--- SHEET ${idx+1}: ${sheetName} ---\n`;
+              fullText += `Rows: ${jsonData.length}, Columns: ${jsonData[0]?.length || 0}\n`;
+              
+              // Convert to CSV for AI (more readable than JSON for tables)
+              const csv = XLSX.utils.sheet_to_csv(sheet);
+              // Limit each sheet to 8000 chars but keep header
+              const limitedCsv = csv.length > 10000 ? csv.slice(0,10000) + `\n...[Truncated, total ${csv.length} chars, ${jsonData.length} rows]` : csv;
+              fullText += limitedCsv + "\n";
+              
+              // Also add structured JSON for first 50 rows for AI analysis
+              if(jsonData.length > 0){
+                const sampleRows = jsonData.slice(0, 30);
+                fullText += `\nStructured Data (first 30 rows):\n${JSON.stringify(sampleRows, null, 2).slice(0,5000)}\n`;
+              }
+            }catch(sheetErr){
+              fullText += `\n[Sheet ${sheetName} parse error: ${sheetErr.message}]\n`;
+            }
+          });
+          
+          if(fullText.trim().length < 100){
+            fullText += `\n[Excel file appears empty or could not extract data. File size: ${formatBytes(file.size)}]`;
+          }
+          resolve(fullText.slice(0, 120000));
+        }catch(err){
+          resolve(`[Excel Parse Error for ${fileName}: ${err.message}. File may be corrupted or password protected. Size: ${formatBytes(file.size)}]`);
         }
       };
-      reader.onerror = ()=>{
-        resolve(`[File: ${file.name}, size: ${formatBytes(file.size)}]`);
+      reader.onerror = ()=> resolve(`[Failed to read Excel file ${fileName}]`);
+    });
+  }
+
+  // 2. CSV
+  if(ext==='csv'){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.readAsText(file, 'UTF-8');
+      reader.onload = ()=> {
+        const text = reader.result;
+        const lines = text.split('\n');
+        resolve(`=== CSV File: ${fileName} ===\nRows: ${lines.length}\n\n${text.slice(0,100000)}`);
       };
-    }
+      reader.onerror = ()=> reject(reader.error);
+    });
+  }
+
+  // 3. PDF - Using PDF.js
+  if(ext==='pdf'){
+    return new Promise(async (resolve)=>{
+      try{
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfjsLib = window.pdfjsLib;
+        if(!pdfjsLib){
+          resolve(`[PDF File: ${fileName}, Size: ${formatBytes(file.size)} - PDF.js not loaded, cannot extract text. Please convert to Excel/CSV for best results.]`);
+          return;
+        }
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        let fullText = `=== PDF File: ${fileName} ===\nPages: ${pdf.numPages}\n\n`;
+        const maxPages = Math.min(pdf.numPages, 20); // Limit to 20 pages
+        for(let i=1; i<=maxPages; i++){
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map(item => item.str).join(' ');
+          fullText += `\n--- Page ${i} ---\n${pageText}\n`;
+          if(fullText.length > 80000) break;
+        }
+        if(pdf.numPages > maxPages) fullText += `\n...[Truncated, total ${pdf.numPages} pages, showing first ${maxPages}]`;
+        resolve(fullText.slice(0,120000));
+      }catch(err){
+        resolve(`[PDF Parse Error for ${fileName}: ${err.message}. Try converting to Excel or TXT.]`);
+      }
+    });
+  }
+
+  // 4. DOCX - Using Mammoth
+  if(ext==='docx'){
+    return new Promise(async (resolve)=>{
+      try{
+        const arrayBuffer = await file.arrayBuffer();
+        if(window.mammoth){
+          const result = await window.mammoth.extractRawText({arrayBuffer});
+          resolve(`=== Word DOCX File: ${fileName} ===\n\n${result.value.slice(0,100000)}`);
+        }else{
+          resolve(`[DOCX File: ${fileName}, Size: ${formatBytes(file.size)} - Mammoth not loaded]`);
+        }
+      }catch(err){
+        resolve(`[DOCX Parse Error for ${fileName}: ${err.message}]`);
+      }
+    });
+  }
+
+  // 5. TXT, JSON, MD, LOG, etc - Plain text
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.readAsText(file, 'UTF-8');
+    reader.onload = ()=> {
+      const text = reader.result || '';
+      if(text.length===0){
+        resolve(`[File: ${fileName} is empty]`);
+      }else{
+        resolve(`=== File: ${fileName} ===\nType: ${file.type || ext}\nSize: ${formatBytes(file.size)}\n\n${text.slice(0,100000)}`);
+      }
+    };
+    reader.onerror = ()=> {
+      // Fallback binary info
+      resolve(`[Binary file: ${fileName}, type: ${file.type}, size: ${formatBytes(file.size)} bytes. Content not directly readable.]`);
+    };
   });
 }
 
@@ -656,23 +962,28 @@ function renderFileList(){
     listEl.innerHTML = `<div class="py-16 text-center"><div class="text-3xl">📂</div><div class="text-sm text-slate-500 mt-2">${files.length===0?'কোনো ফাইল আপলোড করা হয়নি':'কোনো ফাইল পাওয়া যায়নি'}</div></div>`;
     return;
   }
-  listEl.innerHTML = filtered.map(f=>`
+  listEl.innerHTML = filtered.map(f=>{
+    const isExcel = f.fileName.toLowerCase().endsWith('.xlsx') || f.fileName.toLowerCase().endsWith('.xls');
+    const parsedOk = f.content && f.content.length > 100 && !f.content.includes('Parse Error') && !f.content.includes('Binary file');
+    const statusBadge = isExcel ? (parsedOk ? `<span class="text-[10px] px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">✅ ${Math.round(f.content.length/1000)}k parsed</span>` : `<span class="text-[10px] px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded-full">❌ Parse Fail</span>`) : `<span class="text-[10px] px-2 py-0.5 bg-slate-50 text-slate-600 border rounded-full">${Math.round(f.content.length/1000)}k</span>`;
+    return `
     <div class="group border border-slate-200 rounded-xl p-3 hover:border-violet-200 hover:bg-violet-50/30 transition">
       <div class="flex items-start gap-3">
         <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-sm shrink-0">${getFileIcon(f.fileName)}</div>
         <div class="flex-1 min-w-0">
-          <div class="font-medium text-sm truncate">${escapeHtml(f.displayName)}</div>
-          <div class="text-xs text-slate-500 truncate">${escapeHtml(f.fileName)} • ${formatBytes(f.size)}</div>
+          <div class="font-medium text-sm truncate flex items-center gap-2">${escapeHtml(f.displayName)} ${statusBadge}</div>
+          <div class="text-xs text-slate-500 truncate">${escapeHtml(f.fileName)} • ${formatBytes(f.size)} • ${f.content.length} chars</div>
           ${f.description?`<div class="text-xs text-slate-400 mt-1">${escapeHtml(f.description)}</div>`:''}
           <div class="text-[11px] text-slate-400 mt-1">${new Date(f.uploadedAt).toLocaleString('bn-BD')} • ID: ${f.id.slice(-6)}</div>
         </div>
-        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+        <div class="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
           <button onclick="viewFile('${f.id}')" class="w-7 h-7 rounded-full bg-white border border-slate-200 hover:bg-slate-900 hover:text-white text-xs">👁️</button>
           <button onclick="deleteFile('${f.id}')" class="w-7 h-7 rounded-full bg-white border border-slate-200 hover:bg-red-500 hover:text-white text-xs">🗑️</button>
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 document.getElementById('fileSearch').addEventListener('input', renderFileList);
 
@@ -686,7 +997,28 @@ function deleteFile(id){
 function viewFile(id){
   const f = files.find(x=>x.id===id);
   if(!f) return;
-  alert(`📄 ${f.displayName}\n\nফাইল: ${f.fileName}\nসাইজ: ${formatBytes(f.size)}\n\nকন্টেন্ট প্রিভিউ:\n${(f.content||'').slice(0,1000)}`);
+  // Create modal for better view
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+      <div class="p-5 border-b flex justify-between items-center">
+        <div>
+          <div class="font-bold">${escapeHtml(f.displayName)}</div>
+          <div class="text-xs text-slate-500">${escapeHtml(f.fileName)} • ${formatBytes(f.size)} • ${f.content.length} chars parsed</div>
+        </div>
+        <button onclick="this.closest('.fixed').remove()" class="w-8 h-8 rounded-full bg-slate-100">✕</button>
+      </div>
+      <div class="flex-1 overflow-auto p-5 bg-slate-50">
+        <pre class="text-xs whitespace-pre-wrap font-mono bg-white p-4 rounded-xl border">${escapeHtml((f.content||'').slice(0,15000))}</pre>
+      </div>
+      <div class="p-4 border-t bg-slate-50 rounded-b-2xl text-xs text-slate-500">
+        💡 AI এই ডাটা থেকেই রিপোর্ট বানাবে। যদি ডাটা ঠিক না দেখায়, ফাইলটি আবার আপলোড করুন।
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.remove(); });
 }
 function exportAllFiles(){
   const dataStr = JSON.stringify(files, null, 2);
@@ -706,11 +1038,15 @@ function renderAISelector(){
   }
   el.innerHTML = filtered.map(f=>{
     const checked = selectedAIIds.has(f.id) ? 'checked' : '';
+    const isUrl = f.isUrl || f.fileName?.startsWith('http');
+    const icon = isUrl ? '🔗' : getFileIcon(f.fileName);
+    const typeLabel = isUrl ? 'URL' : (f.fileName?.split('.').pop()?.toUpperCase() || 'FILE');
     return `<label class="flex items-start gap-3 p-3 rounded-xl border ${checked?'border-violet-300 bg-violet-50':'border-slate-200 hover:border-slate-300 bg-white'} cursor-pointer transition">
       <input type="checkbox" value="${f.id}" ${checked} onchange="toggleAIFile('${f.id}')" class="mt-1 accent-violet-600">
+      <div class="w-8 h-8 rounded-lg ${isUrl?'bg-emerald-50 text-emerald-600 border border-emerald-200':'bg-slate-50 border'} flex items-center justify-center text-sm shrink-0">${icon}</div>
       <div class="flex-1 min-w-0">
-        <div class="text-sm font-medium truncate">${escapeHtml(f.displayName)}</div>
-        <div class="text-xs text-slate-500 truncate">${escapeHtml(f.fileName)} • ${formatBytes(f.size)}</div>
+        <div class="text-sm font-medium truncate flex items-center gap-1">${escapeHtml(f.displayName)} ${isUrl?`<span class='text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full'>${typeLabel}</span>`:''}</div>
+        <div class="text-xs text-slate-500 truncate">${escapeHtml((f.fileName||'').slice(0,60))} • ${formatBytes(f.size)}${isUrl?' • URL':''}</div>
       </div>
     </label>`;
   }).join('');
@@ -1051,7 +1387,18 @@ function saveSettings(){
 /* ================== UTILS ================== */
 function formatBytes(bytes){ if(bytes===0) return '0 B'; const k=1024; const sizes=['B','KB','MB','GB']; const i=Math.floor(Math.log(bytes)/Math.log(k)); return parseFloat((bytes/Math.pow(k,i)).toFixed(1))+' '+sizes[i]; }
 function timeAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<60) return 'এখনই'; if(s<3600) return Math.floor(s/60)+' মিনিট আগে'; if(s<86400) return Math.floor(s/3600)+' ঘণ্টা আগে'; return Math.floor(s/86400)+' দিন আগে'; }
-function getFileIcon(name){ const ext=name.split('.').pop().toLowerCase(); if(['pdf'].includes(ext)) return '📕'; if(['xls','xlsx','csv'].includes(ext)) return '📗'; if(['doc','docx'].includes(ext)) return '📘'; if(['png','jpg','jpeg','webp'].includes(ext)) return '🖼️'; if(['json'].includes(ext)) return '🔧'; return '📄'; }
+function getFileIcon(name){ 
+  if(!name) return '📄';
+  if(name.startsWith('http')) return '🔗';
+  const ext=name.split('.').pop().toLowerCase(); 
+  if(['pdf'].includes(ext)) return '📕'; 
+  if(['xls','xlsx','csv'].includes(ext)) return '📗'; 
+  if(['doc','docx'].includes(ext)) return '📘'; 
+  if(['png','jpg','jpeg','webp'].includes(ext)) return '🖼️'; 
+  if(['json'].includes(ext)) return '🔧'; 
+  if(name.includes('docs.google.com')) return '📊';
+  return '📄'; 
+}
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
 
 /* init */
