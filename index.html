@@ -931,6 +931,23 @@ function getApiKeys(){
 
 async function generateReport(){
   const cmd = document.getElementById('aiCommand').value.trim();
+  
+  // FORCE RESET TTS MODEL - If user has TTS model selected, reset to auto
+  if(settings.model && (settings.model.toLowerCase().includes('tts') || settings.model.toLowerCase().includes('preview-tts'))){
+    console.warn(`🚫 TTS model detected in settings: ${settings.model}, resetting to auto`);
+    settings.model = 'auto';
+    localStorage.setItem('uzzal_settings', JSON.stringify(settings));
+    const modelEl = document.getElementById('setModel');
+    if(modelEl) modelEl.value = 'auto';
+    // Show message
+    const status = document.getElementById('aiStatus');
+    if(status){
+      status.classList.remove('hidden');
+      status.className='p-3 rounded-xl text-xs bg-amber-50 border border-amber-200 text-amber-700';
+      status.textContent=`⚠️ আপনার Settings এ TTS মডেল (${settings.model}) ছিল, যেটা TEXT সাপোর্ট করে না। Auto-Detect এ Reset করা হলো।`;
+    }
+  }
+  
   // Check if large sheet (253 branches)
   const hasLargeSheet = files.some(f=> (f.content||'').includes('Total Branches') || (f.content||'').split('\n').length > 200);
   if(hasLargeSheet){
@@ -1017,7 +1034,6 @@ ${snippet}
     console.log(`Trying ${tryModels.length} models with ${apiKeys.length} API keys`);
     
     let lastErr=null;
-    const apiKeys = getApiKeys();
     // HARD BLOCK TTS MODELS - NEVER TRY THEM
     tryModels = tryModels.filter(m=>{
       const lm = m.toLowerCase();
