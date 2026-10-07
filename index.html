@@ -872,23 +872,37 @@ function clearAllAI(){ selectedIds.clear(); renderAISelector(); }
 function setCmd(t){ document.getElementById('aiCommand').value=t; }
 
 async function getModels(key){
-  // Support multiple keys - use first valid AIza key
-  const keys = key.split(',').map(k=>k.trim()).filter(k=>k.startsWith('AIza'));
+  // Support both AIza... (AI Studio) and AQ... (Cloud Console) keys
+  const keys = key.split(',').map(k=>k.trim()).filter(k=>k.length>20);
   const useKey = keys[0] || key;
-  if(!useKey.startsWith('AIza')){
-    console.warn('Invalid API key format, should start with AIza, got:', useKey.slice(0,10));
+  if(!useKey){
+    console.warn('No API key provided');
     return [];
   }
+  // Try both auth methods: ?key= and x-goog-api-key header
+  const tryFetch = async (k) => {
+    try{
+      // Method 1: ?key= param
+      let r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${k}`);
+      if(r.ok) return r;
+      // Method 2: x-goog-api-key header (for AQ. keys)
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
+        headers: { 'x-goog-api-key': k }
+      });
+      return r;
+    }catch(e){ return {ok:false}; }
+  };
+  
   try{
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${useKey}`);
+    const r = await tryFetch(useKey);
     if(!r.ok) {
-      const txt = await r.text();
-      console.warn('Models list failed:', txt.slice(0,300));
+      const txt = await r.text().catch(()=> '');
+      console.warn('Models list failed:', txt.slice(0,500));
       return [];
     }
     const d = await r.json();
     let models = (d.models||[]).filter(m=>m.supportedGenerationMethods?.includes('generateContent')).map(m=>m.name.replace('models/',''));
-    // EXCLUDE TTS, AUDIO, IMAGE, EMBEDDING models that don't support TEXT
+    // EXCLUDE TTS, AUDIO, IMAGE, EMBEDDING models
     models = models.filter(m=>{
       const lower = m.toLowerCase();
       if(lower.includes('tts')) return false;
@@ -899,7 +913,7 @@ async function getModels(key){
       if(lower.includes('aqa')) return false;
       return true;
     });
-    console.log('Filtered models (excluding TTS):', models);
+    console.log('Filtered models:', models.slice(0,10));
     return models;
   }catch(e){ console.warn('getModels error', e); return []; }
 }
@@ -1005,12 +1019,41 @@ ${snippet}
       for(const apiKey of apiKeys){
         try{
           status.textContent=`🔍 Trying model: ${m} with Key ${apiKeys.indexOf(apiKey)+1}/${apiKeys.length}...`;
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
-        const res = await fetch(url, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.7, maxOutputTokens:8192}})
-        });
+          // Try both auth methods for AQ. and AIza keys
+          let url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
+          let fetchOptions = {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.7, maxOutputTokens:8192}})
+          };
+          // For AQ. keys, also try x-goog-api-key header method
+          let res;
+          try{
+            res = await fetch(url, fetchOptions);
+            // If 401 and AQ key, try header method
+            if(!res.ok && apiKey.startsWith('AQ.')){
+              const txt = await res.text();
+              if(txt.includes('401') || txt.includes('UNAUTHENTICATED')){
+                console.log('Trying x-goog-api-key header for AQ key');
+                fetchOptions.headers['x-goog-api-key'] = apiKey;
+                // Remove key from URL for header method
+                const url2 = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+                res = await fetch(url2, fetchOptions);
+              } else {
+                // Re-create response from text for error handling below
+                res = { ok:false, status: res.status, text: async ()=>txt };
+              }
+            }
+          }catch(e){
+            // Network error, try header method as fallback for AQ
+            if(apiKey.startsWith('AQ.')){
+              fetchOptions.headers['x-goog-api-key'] = apiKey;
+              const url2 = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+              res = await fetch(url2, fetchOptions);
+            } else {
+              throw e;
+            }
+          }
             if(!res.ok){
           const txt = await res.text();
           if(res.status===404){ lastErr=txt; continue; }
@@ -1113,11 +1156,30 @@ function closeSettings(){
 }
 async function validateGeminiKey(key){
   const testKey = key.split(',')[0].trim();
-  if(testKey.startsWith('AQ.')){
-    return {valid:false, error:'❌ এই Key টা Gemini Key না! AQ. দিয়ে শুরু হওয়া Key টা Google Cloud এর অন্য সার্ভিসের। Gemini Key AIza... দিয়ে শুরু হতে হবে।\n\nসঠিক Key পেতে: https://aistudio.google.com/app/apikey → Create API Key'};
+  if(!testKey){
+    return {valid:false, error:'Key খালি!'};
   }
-  if(!testKey.startsWith('AIza')){
-    return {valid:false, error:`❌ Invalid Format! Key "${testKey.slice(0,20)}..." AIza... দিয়ে শুরু হতে হবে, AQ. দিয়ে না।\n\nসঠিক Key: https://aistudio.google.com/app/apikey`};
+  // Allow both AIza... and AQ... but warn
+  if(testKey.startsWith('AQ.')){
+    // AQ keys are from Cloud Console, need to check if API enabled
+    try{
+      // Try with x-goog-api-key header
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models`, {
+        headers: { 'x-goog-api-key': testKey }
+      });
+      if(res.ok) return {valid:true, warning:'AQ. Key Valid (Cloud Console) - Generative API Enable আছে'};
+      const txt = await res.text();
+      if(txt.includes('API_KEY_INVALID') || txt.includes('401')){
+        return {valid:false, error:`❌ AQ. Key Invalid!\n\nআপনার Key: ${testKey.slice(0,30)}...\n\nসমাধান:\n1. https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com → Enable করুন\n2. https://console.cloud.google.com/apis/credentials → API Key → Restrictions → Generative Language API Allow করুন\n3. অথবা AI Studio থেকে নতুন Key নিন: https://aistudio.google.com/app/apikey (AIza... দিয়ে শুরু)`};
+      }
+      if(txt.includes('429')) return {valid:true, warning:'Quota শেষ কিন্তু Key Valid'};
+      return {valid:false, error: txt.slice(0,400)};
+    }catch(e){
+      return {valid:false, error:e.message};
+    }
+  }
+  if(!testKey.startsWith('AIza') && !testKey.startsWith('AQ.')){
+    return {valid:false, error:`❌ Invalid Format! Key "${testKey.slice(0,20)}..." AIza... বা AQ. দিয়ে শুরু হতে হবে\n\nসঠিক Key: https://aistudio.google.com/app/apikey`};
   }
   try{
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${testKey}`);
