@@ -403,7 +403,7 @@ tailwind.config = {
 </div>
 
 <!-- SETTINGS MODAL - UPDATED WITH BIGGER SUPABASE SECTION -->
-<div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm items-center justify-center p-4">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
     <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-violet-600 to-indigo-600 text-white">
       <h3 class="font-bold text-lg">⚙️ সেটিংস - এখানেই Supabase ও Gemini Key বসাবেন</h3>
@@ -1375,8 +1375,16 @@ function downloadReport(type){
 }
 
 /* ================== SETTINGS ================== */
-function openSettings(){ document.getElementById('settingsModal').classList.remove('hidden'); }
-function closeSettings(){ document.getElementById('settingsModal').classList.add('hidden'); }
+function openSettings(){ 
+  const m = document.getElementById('settingsModal');
+  m.classList.remove('hidden'); 
+  m.classList.add('flex');
+}
+function closeSettings(){ 
+  const m = document.getElementById('settingsModal');
+  m.classList.add('hidden'); 
+  m.classList.remove('flex');
+}
 async function testSupabaseConnection(){
   const url = document.getElementById('settingSupabaseUrl').value.trim();
   const key = document.getElementById('settingSupabaseKey').value.trim();
