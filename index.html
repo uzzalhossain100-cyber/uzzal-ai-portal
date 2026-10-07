@@ -158,8 +158,21 @@
         
         <div class="space-y-4">
           <div class="bg-white rounded-xl border p-4">
-            <b class="text-sm">২. কমান্ড দিন (বাংলা/English)</b>
-            <textarea id="aiCommand" rows="3" placeholder="যেমন: এই ফাইল থেকে সারাংশ বানাও, টেবিল সহ" class="w-full mt-2 px-3 py-2 border-2 rounded-xl text-sm"></textarea>
+            <div class="flex items-center justify-between">
+              <b class="text-sm">২. কমান্ড দিন (বাংলা/English)</b>
+              <div class="flex gap-1">
+                <select id="voiceLang" class="px-2 py-1 border rounded-full text-[11px] bg-slate-50">
+                  <option value="bn-BD">বাংলা 🎤</option>
+                  <option value="en-US">English 🎤</option>
+                  <option value="auto">Auto</option>
+                </select>
+                <button id="voiceBtn" onclick="toggleVoiceCommand()" class="px-3 py-1 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-full text-xs font-bold hover:from-red-600 hover:to-pink-600 flex items-center gap-1">
+                  <span id="voiceIcon">🎤</span> <span id="voiceText">ভয়েস</span>
+                </button>
+              </div>
+            </div>
+            <textarea id="aiCommand" rows="3" placeholder="যেমন: এই ফাইল থেকে সারাংশ বানাও, টেবিল সহ&#10;🎤 ভয়েস বাটনে ক্লিক করে মুখে বলুন" class="w-full mt-2 px-3 py-2 border-2 rounded-xl text-sm"></textarea>
+            <div id="voiceStatus" class="hidden mt-2 p-2 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700"></div>
             <div class="grid grid-cols-2 gap-2 mt-3">
               <button onclick="setCmd('এই ফাইল থেকে প্রফেশনাল সারাংশ রিপোর্ট বানাও, হেডিং ও টেবিল সহ')" class="p-2 bg-violet-50 border border-violet-100 rounded-xl text-xs text-left">📊 সারাংশ</button>
               <button onclick="setCmd('এই ডাটা থেকে ইনসাইট ও সুপারিশ দাও')" class="p-2 bg-blue-50 border border-blue-100 rounded-xl text-xs text-left">💡 ইনসাইট</button>
@@ -172,13 +185,22 @@
           </div>
           
           <div id="aiResultCard" class="hidden bg-white rounded-xl border overflow-hidden">
-            <div class="p-3 border-b flex justify-between">
+            <div class="p-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <b class="text-sm">📑 AI Report</b>
-              <div class="flex gap-1">
+              <div class="flex flex-wrap gap-1 items-center">
+                <div class="flex gap-1 bg-violet-50 border border-violet-200 rounded-full p-1">
+                  <button id="ttsPlayBtn" onclick="toggleSpeech()" class="px-3 py-1 bg-violet-600 text-white rounded-full text-xs font-bold flex items-center gap-1"><span id="ttsIcon">🔊</span> <span id="ttsText">পড়ে শোনাও</span></button>
+                  <button onclick="pauseSpeech()" class="px-2 py-1 bg-white border rounded-full text-xs">⏸️</button>
+                  <button onclick="stopSpeech()" class="px-2 py-1 bg-white border rounded-full text-xs">⏹️</button>
+                </div>
+                <select id="ttsVoice" class="px-2 py-1 border rounded-full text-[11px] bg-slate-50 max-w-[120px]">
+                  <option value="auto">Auto Voice</option>
+                </select>
                 <button onclick="copyReport()" class="px-2 py-1 bg-slate-100 rounded-full text-xs">Copy</button>
-                <button onclick="downloadReport()" class="px-2 py-1 bg-violet-600 text-white rounded-full text-xs">Download</button>
+                <button onclick="downloadReport()" class="px-2 py-1 bg-slate-900 text-white rounded-full text-xs">Download</button>
               </div>
             </div>
+            <div id="ttsStatus" class="hidden px-3 py-2 bg-blue-50 border-b border-blue-100 text-xs text-blue-700"></div>
             <div id="aiResult" class="p-4 prose prose-sm max-w-none"></div>
           </div>
           
@@ -1291,10 +1313,314 @@ async function saveSettings(){
   }
 }
 
-// Init
+// ===== VOICE COMMAND (Speech to Text) =====
+let recognition = null;
+let isListening = false;
+
+function initVoice(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    console.warn('SpeechRecognition not supported');
+    return null;
+  }
+  const rec = new SpeechRecognition();
+  rec.continuous = false;
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+  return rec;
+}
+
+function toggleVoiceCommand(){
+  const btn = document.getElementById('voiceBtn');
+  const icon = document.getElementById('voiceIcon');
+  const txt = document.getElementById('voiceText');
+  const status = document.getElementById('voiceStatus');
+  const langSel = document.getElementById('voiceLang');
+  
+  if(isListening){
+    // Stop listening
+    if(recognition) recognition.stop();
+    isListening = false;
+    if(btn) btn.className = 'px-3 py-1 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-full text-xs font-bold hover:from-red-600 hover:to-pink-600 flex items-center gap-1';
+    if(icon) icon.textContent = '🎤';
+    if(txt) txt.textContent = 'ভয়েস';
+    if(status){ status.classList.add('hidden'); }
+    return;
+  }
+  
+  // Start listening
+  recognition = initVoice();
+  if(!recognition){
+    alert('❌ আপনার ব্রাউজারে ভয়েস সাপোর্ট নেই! Chrome ব্যবহার করুন।');
+    return;
+  }
+  
+  const selectedLang = langSel ? langSel.value : 'bn-BD';
+  if(selectedLang === 'auto'){
+    // Auto detect - try Bengali first
+    recognition.lang = 'bn-BD';
+  } else {
+    recognition.lang = selectedLang;
+  }
+  
+  isListening = true;
+  if(btn) btn.className = 'px-3 py-1 bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-full text-xs font-bold animate-pulse flex items-center gap-1';
+  if(icon) icon.textContent = '🔴';
+  if(txt) txt.textContent = 'শুনছি...';
+  if(status){
+    status.classList.remove('hidden');
+    status.className = 'mt-2 p-2 rounded-xl text-xs bg-emerald-50 border border-emerald-200 text-emerald-700';
+    status.textContent = `🎤 শুনছি... ${recognition.lang === 'bn-BD' ? 'বাংলায় বলুন' : 'Speak in English'} - বলা শেষ হলে থামবে`;
+  }
+  
+  recognition.onresult = (event)=>{
+    const transcript = event.results[0][0].transcript;
+    const isFinal = event.results[0].isFinal;
+    document.getElementById('aiCommand').value = transcript;
+    if(status){
+      status.textContent = `📝 ${transcript} ${isFinal ? '✅' : '...'}`;
+    }
+    if(isFinal){
+      isListening = false;
+      if(btn) btn.className = 'px-3 py-1 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-full text-xs font-bold flex items-center gap-1';
+      if(icon) icon.textContent = '🎤';
+      if(txt) txt.textContent = 'ভয়েস';
+      setTimeout(()=>{ if(status) status.classList.add('hidden'); }, 2000);
+    }
+  };
+  
+  recognition.onerror = (event)=>{
+    console.error('Voice error', event.error);
+    isListening = false;
+    if(btn) btn.className = 'px-3 py-1 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-full text-xs font-bold flex items-center gap-1';
+    if(icon) icon.textContent = '🎤';
+    if(txt) txt.textContent = 'ভয়েস';
+    if(status){
+      status.className = 'mt-2 p-2 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700';
+      if(event.error === 'not-allowed'){
+        status.textContent = '❌ মাইক্রোফোন Permission দিন! ব্রাউজারে Allow করুন।';
+      } else {
+        status.textContent = `❌ Error: ${event.error} - আবার চেষ্টা করুন`;
+      }
+    }
+  };
+  
+  recognition.onend = ()=>{
+    isListening = false;
+    if(btn) btn.className = 'px-3 py-1 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-full text-xs font-bold flex items-center gap-1';
+    if(icon) icon.textContent = '🎤';
+    if(txt) txt.textContent = 'ভয়েস';
+  };
+  
+  recognition.start();
+}
+
+// ===== TEXT TO SPEECH (Report Reading) =====
+let currentUtterance = null;
+let isSpeaking = false;
+let isPaused = false;
+
+function loadVoices(){
+  const voices = speechSynthesis.getVoices();
+  const select = document.getElementById('ttsVoice');
+  if(!select) return;
+  
+  // Keep auto option
+  const autoOpt = select.options[0];
+  select.innerHTML = '';
+  select.appendChild(autoOpt);
+  
+  // Add Bengali and English voices
+  voices.forEach((voice, i)=>{
+    const lower = voice.name.toLowerCase();
+    const isBn = lower.includes('bengali') || lower.includes('bangla') || voice.lang.includes('bn');
+    const isEn = voice.lang.includes('en');
+    if(isBn || isEn || i<10){ // Show first 10 + Bengali/English
+      const opt = document.createElement('option');
+      opt.value = voice.name;
+      opt.textContent = `${voice.name} (${voice.lang}) ${isBn?'🇧🇩':''}`;
+      if(isBn) opt.selected = true; // Prefer Bengali
+      select.appendChild(opt);
+    }
+  });
+  
+  // If no Bengali voice, show all
+  if(select.options.length <= 1){
+    voices.slice(0,15).forEach(voice=>{
+      const opt = document.createElement('option');
+      opt.value = voice.name;
+      opt.textContent = `${voice.name} (${voice.lang})`;
+      select.appendChild(opt);
+    });
+  }
+}
+
+// Load voices when available
+if('speechSynthesis' in window){
+  speechSynthesis.onvoiceschanged = loadVoices;
+  setTimeout(loadVoices, 500);
+}
+
+function toggleSpeech(){
+  if(isSpeaking && !isPaused){
+    pauseSpeech();
+  } else if(isPaused){
+    resumeSpeech();
+  } else {
+    speakReport();
+  }
+}
+
+function speakReport(){
+  if(!lastReport){
+    alert('কোনো রিপোর্ট নেই!');
+    return;
+  }
+  
+  // Stop any current speech
+  stopSpeech();
+  
+  // Clean report for speech - remove markdown symbols
+  let textToSpeak = lastReport
+    .replace(/[#*`_\[\]]/g, '')
+    .replace(/\n+/g, '. ')
+    .slice(0, 10000); // Limit to 10k chars for TTS
+  
+  if(!textToSpeak.trim()){
+    alert('পড়ার মতো Text নেই!');
+    return;
+  }
+  
+  currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
+  
+  // Set voice
+  const voiceSelect = document.getElementById('ttsVoice');
+  const selectedVoiceName = voiceSelect ? voiceSelect.value : 'auto';
+  const voices = speechSynthesis.getVoices();
+  
+  if(selectedVoiceName !== 'auto'){
+    const selectedVoice = voices.find(v=>v.name===selectedVoiceName);
+    if(selectedVoice) currentUtterance.voice = selectedVoice;
+  } else {
+    // Auto - try to find Bengali voice if report is Bengali
+    const isBengali = /[\u0980-\u09FF]/.test(textToSpeak);
+    if(isBengali){
+      const bnVoice = voices.find(v=>v.lang.includes('bn') || v.name.toLowerCase().includes('bengali') || v.name.toLowerCase().includes('bangla'));
+      if(bnVoice) currentUtterance.voice = bnVoice;
+    }
+    // If still no voice, use default
+  }
+  
+  // Detect language for better pronunciation
+  const isBengaliReport = /[\u0980-\u09FF]/.test(textToSpeak);
+  currentUtterance.lang = isBengaliReport ? 'bn-BD' : 'en-US';
+  currentUtterance.rate = 0.9; // Slightly slower for clarity
+  currentUtterance.pitch = 1;
+  currentUtterance.volume = 1;
+  
+  const playBtn = document.getElementById('ttsPlayBtn');
+  const icon = document.getElementById('ttsIcon');
+  const txt = document.getElementById('ttsText');
+  const status = document.getElementById('ttsStatus');
+  
+  currentUtterance.onstart = ()=>{
+    isSpeaking = true;
+    isPaused = false;
+    if(playBtn) playBtn.className = 'px-3 py-1 bg-amber-500 text-white rounded-full text-xs font-bold flex items-center gap-1';
+    if(icon) icon.textContent = '⏸️';
+    if(txt) txt.textContent = 'পড়ছে...';
+    if(status){
+      status.classList.remove('hidden');
+      status.textContent = `🔊 পড়ে শোনানো হচ্ছে... ${isBengaliReport ? 'বাংলা' : 'English'} - মাইকে ক্লিক করে বন্ধ করুন`;
+    }
+  };
+  
+  currentUtterance.onend = ()=>{
+    isSpeaking = false;
+    isPaused = false;
+    if(playBtn) playBtn.className = 'px-3 py-1 bg-violet-600 text-white rounded-full text-xs font-bold flex items-center gap-1';
+    if(icon) icon.textContent = '🔊';
+    if(txt) txt.textContent = 'পড়ে শোনাও';
+    if(status){
+      status.classList.add('hidden');
+    }
+  };
+  
+  currentUtterance.onerror = (e)=>{
+    console.error('TTS error', e);
+    isSpeaking = false;
+    isPaused = false;
+    if(playBtn) playBtn.className = 'px-3 py-1 bg-violet-600 text-white rounded-full text-xs font-bold flex items-center gap-1';
+    if(icon) icon.textContent = '🔊';
+    if(txt) txt.textContent = 'পড়ে শোনাও';
+    if(status){
+      status.className = 'px-3 py-2 bg-red-50 border-b border-red-100 text-xs text-red-700';
+      status.textContent = `❌ পড়তে সমস্যা: ${e.error} - Chrome ব্যবহার করুন`;
+    }
+  };
+  
+  currentUtterance.onpause = ()=>{
+    isPaused = true;
+    if(icon) icon.textContent = '▶️';
+    if(txt) txt.textContent = 'পজ';
+  };
+  
+  currentUtterance.onresume = ()=>{
+    isPaused = false;
+    if(icon) icon.textContent = '⏸️';
+    if(txt) txt.textContent = 'পড়ছে...';
+  };
+  
+  speechSynthesis.speak(currentUtterance);
+}
+
+function pauseSpeech(){
+  if(speechSynthesis.speaking && !isPaused){
+    speechSynthesis.pause();
+    isPaused = true;
+    const icon = document.getElementById('ttsIcon');
+    const txt = document.getElementById('ttsText');
+    if(icon) icon.textContent = '▶️';
+    if(txt) txt.textContent = 'চালাও';
+    const status = document.getElementById('ttsStatus');
+    if(status) status.textContent = '⏸️ পজ করা হয়েছে - আবার ক্লিক করে চালান';
+  }
+}
+
+function resumeSpeech(){
+  if(isPaused){
+    speechSynthesis.resume();
+    isPaused = false;
+    const icon = document.getElementById('ttsIcon');
+    const txt = document.getElementById('ttsText');
+    if(icon) icon.textContent = '⏸️';
+    if(txt) txt.textContent = 'পড়ছে...';
+  }
+}
+
+function stopSpeech(){
+  speechSynthesis.cancel();
+  isSpeaking = false;
+  isPaused = false;
+  currentUtterance = null;
+  const playBtn = document.getElementById('ttsPlayBtn');
+  const icon = document.getElementById('ttsIcon');
+  const txt = document.getElementById('ttsText');
+  const status = document.getElementById('ttsStatus');
+  if(playBtn) playBtn.className = 'px-3 py-1 bg-violet-600 text-white rounded-full text-xs font-bold flex items-center gap-1';
+  if(icon) icon.textContent = '🔊';
+  if(txt) txt.textContent = 'পড়ে শোনাও';
+  if(status) status.classList.add('hidden');
+}
+
+// Init - Final
 checkAuth();
 document.getElementById('fileSearch')?.addEventListener('input', renderFileList);
 document.getElementById('aiSearch')?.addEventListener('input', renderAISelector);
+// Load TTS voices
+if('speechSynthesis' in window){
+  setTimeout(loadVoices, 1000);
+}
 </script>
 </body>
 </html>
