@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uzzal AI Report Portal - স্মার্ট রিপোর্ট ম্যানেজমেন্ট</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        'bn': ['Hind Siliguri', 'Inter', 'sans-serif'],
+        'en': ['Inter', 'sans-serif']
+      }
+    }
+  }
+}
+</script>
+<style>
+* { font-family: 'Hind Siliguri', 'Inter', sans-serif; }
+.glass { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.float { animation: float 4s ease-in-out infinite; }
+</style>
+</head>
+<body class="bg-[#f8fafc] min-h-screen text-slate-800">
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="min-h-screen flex">
+  <div class="hidden lg:flex lg:w-[55%] bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-700 p-12 flex-col justify-between relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-full h-full">
+      <div class="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-white/10 rounded-full blur-3xl"></div>
+      <div class="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-blue-300/20 rounded-full blur-3xl"></div>
+    </div>
+    <div class="relative z-10">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center font-bold text-violet-600 text-xl">U</div>
+        <span class="text-white font-bold text-xl tracking-wide">UZZAL AI PORTAL</span>
+      </div>
+    </div>
+    <div class="relative z-10">
+      <h1 class="text-5xl font-bold text-white leading-tight mb-6">আপনার ফাইল থেকে<br/>স্মার্ট রিপোর্ট<br/>তৈরি করুন AI দিয়ে</h1>
+      <p class="text-indigo-100 text-lg leading-relaxed max-w-md">যেকোনো ফাইল আপলোড করুন, বাংলা বা ইংরেজিতে কমান্ড দিন, আর Gemini AI মুহূর্তে প্রফেশনাল রিপোর্ট বানিয়ে দেবে।</p>
+      <div class="mt-10 flex gap-4">
+        <div class="bg-white/10 glass border border-white/20 rounded-2xl p-4 w-40">
+          <div class="text-3xl font-bold text-white">100%</div>
+          <div class="text-indigo-200 text-sm">নিরাপদ ও প্রাইভেট</div>
+        </div>
+        <div class="bg-white/10 glass border border-white/20 rounded-2xl p-4 w-40">
+          <div class="text-3xl font-bold text-white">BN+EN</div>
+          <div class="text-indigo-200 text-sm">দুই ভাষা সাপোর্ট</div>
+        </div>
+      </div>
+    </div>
+    <div class="relative z-10 text-indigo-200 text-sm">© 2026 Uzzal AI Report System • Powered by Gemini</div>
+  </div>
+
+  <div class="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white">
+    <div class="w-full max-w-md">
+      <div class="lg:hidden flex items-center gap-3 mb-10">
+        <div class="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center font-bold text-white text-xl">U</div>
+        <span class="font-bold text-xl">UZZAL AI PORTAL</span>
+      </div>
+      <div class="mb-8">
+        <h2 class="text-3xl font-bold text-slate-900">এডমিন লগইন</h2>
+        <p class="text-slate-500 mt-2">আপনার অ্যাকাউন্টে প্রবেশ করুন</p>
+      </div>
+      <form id="loginForm" class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">ইউজার আইডি</label>
+          <input id="loginUser" type="text" placeholder="Uzzal" class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none transition" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">পাসওয়ার্ড</label>
+          <input id="loginPass" type="password" placeholder="••••••••" class="w-full px-4 py-3.5 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none transition" required>
+        </div>
+        <div id="loginError" class="hidden bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100"></div>
+        <button type="submit" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold py-3.5 rounded-xl hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-200 transition-all hover:shadow-xl hover:-translate-y-0.5">লগইন করুন →</button>
+        <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-500">
+          <b>ডেমো:</b> ID: <code class="bg-white px-1.5 py-0.5 rounded border">Uzzal</code> | Pass: <code class="bg-white px-1.5 py-0.5 rounded border">Goodman321</code>
+        </div>
+      </form>
+      <div class="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+        <span>Supabase • Vercel • GitHub Ready</span>
+        <span>Gemini API Integrated</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="hidden min-h-screen">
+  <!-- Navbar -->
+  <header class="sticky top-0 z-40 bg-white/80 glass border-b border-slate-200/60">
+    <div class="max-w-[1400px] mx-auto px-4 lg:px-8 h-[68px] flex items-center justify-between">
+      <div class="flex items-center gap-8">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 bg-gradient-to-br from-violet-600 to-indigo-600 rounded-xl flex items-center justify-center font-bold text-white">U</div>
+          <span class="font-bold text-[16px] tracking-tight hidden sm:block">UZZAL AI PORTAL</span>
+        </div>
+        <nav class="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-full">
+          <button onclick="switchTab('home')" data-tab="home" class="tab-btn px-5 py-2 rounded-full text-sm font-medium bg-white shadow-sm text-slate-900">🏠 হোম</button>
+          <button onclick="switchTab('upload')" data-tab="upload" class="tab-btn px-5 py-2 rounded-full text-sm font-medium text-slate-600 hover:text-slate-900">📁 ফাইল আপলোড</button>
+          <button onclick="switchTab('ai')" data-tab="ai" class="tab-btn px-5 py-2 rounded-full text-sm font-medium text-slate-600 hover:text-slate-900">🤖 AI রিপোর্ট</button>
+        </nav>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="openSettings()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition">⚙️</button>
+        <div class="h-6 w-px bg-slate-200 hidden sm:block"></div>
+        <div class="flex items-center gap-3">
+          <div class="hidden sm:block text-right">
+            <div class="text-sm font-semibold leading-none">Uzzal Ahmed</div>
+            <div class="text-xs text-slate-500">Super Admin</div>
+          </div>
+          <img src="https://i.pravatar.cc/100?img=12" class="w-9 h-9 rounded-full border-2 border-violet-200">
+        </div>
+        <button onclick="logout()" class="ml-1 px-3 py-1.5 text-xs font-medium bg-slate-900 text-white rounded-full hover:bg-black">লগআউট</button>
+      </div>
+    </div>
+    <!-- mobile tabs -->
+    <div class="md:hidden border-t border-slate-100 bg-white px-2 py-2 flex gap-1 overflow-auto">
+      <button onclick="switchTab('home')" data-tab="home" class="tab-btn-m flex-1 py-2.5 rounded-xl text-sm font-medium bg-slate-900 text-white">হোম</button>
+      <button onclick="switchTab('upload')" data-tab="upload" class="tab-btn-m flex-1 py-2.5 rounded-xl text-sm font-medium bg-slate-100 text-slate-700">ফাইল আপলোড</button>
+      <button onclick="switchTab('ai')" data-tab="ai" class="tab-btn-m flex-1 py-2.5 rounded-xl text-sm font-medium bg-slate-100 text-slate-700">AI রিপোর্ট</button>
+    </div>
+  </header>
+
+  <main class="max-w-[1400px] mx-auto px-4 lg:px-8 py-6 lg:py-8">
+    
+    <!-- HOME TAB -->
+    <section id="tab-home" class="space-y-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight">স্বাগতম, Uzzal! 👋</h1>
+          <p class="text-slate-500 mt-1">আজকের রিপোর্ট ম্যানেজমেন্ট ড্যাশবোর্ড</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="switchTab('upload')" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50">+ নতুন ফাইল আপলোড</button>
+          <button onclick="switchTab('ai')" class="px-5 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-medium hover:bg-violet-700 shadow-lg shadow-violet-200">🤖 AI রিপোর্ট তৈরি</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center text-lg">📄</div>
+          <div class="mt-4 text-3xl font-bold" id="statTotalFiles">0</div>
+          <div class="text-sm text-slate-500">মোট আপলোড ফাইল</div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">📊</div>
+          <div class="mt-4 text-3xl font-bold" id="statReports">0</div>
+          <div class="text-sm text-slate-500">তৈরি রিপোর্ট</div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg">💾</div>
+          <div class="mt-4 text-3xl font-bold" id="statStorage">0 KB</div>
+          <div class="text-sm text-slate-500">ব্যবহৃত স্টোরেজ</div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">🤖</div>
+          <div class="mt-4 text-sm font-semibold" id="statGemini">Not Connected</div>
+          <div class="text-sm text-slate-500">Gemini API স্ট্যাটাস</div>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-[1.6fr_1fr] gap-6">
+        <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+          <div class="p-5 flex items-center justify-between border-b border-slate-100">
+            <h3 class="font-semibold">সাম্প্রতিক ফাইলসমূহ</h3>
+            <button onclick="switchTab('upload')" class="text-xs text-violet-600 font-medium hover:underline">সব দেখুন →</button>
+          </div>
+          <div id="homeRecentList" class="divide-y divide-slate-100 max-h-[380px] overflow-auto scrollbar-thin"></div>
+        </div>
+        <div class="space-y-6">
+          <div class="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl p-6 text-white relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+            <h3 class="font-semibold text-lg relative">AI দিয়ে কীভাবে রিপোর্ট বানাবেন?</h3>
+            <ol class="mt-4 space-y-3 text-sm text-violet-100 relative list-decimal list-inside">
+              <li>ফাইল আপলোড পেজে গিয়ে নাম দিয়ে ফাইল সেভ করুন</li>
+              <li>AI রিপোর্ট পেজে এক বা একাধিক ফাইল সিলেক্ট করুন</li>
+              <li>বাংলায় বা ইংরেজিতে কমান্ড লিখুন (যেমন: "বিক্রয়ের সারাংশ দাও")</li>
+              <li>রিপোর্ট তৈরি করুন বাটনে ক্লিক করুন</li>
+            </ol>
+            <button onclick="switchTab('ai')" class="mt-5 w-full bg-white text-violet-700 font-semibold py-2.5 rounded-xl text-sm hover:bg-violet-50">এখনই শুরু করুন</button>
+          </div>
+          <div class="bg-white rounded-2xl border border-slate-200/60 p-5">
+            <h3 class="font-semibold text-sm mb-3">সিস্টেম তথ্য</h3>
+            <div class="space-y-2.5 text-xs">
+              <div class="flex justify-between"><span class="text-slate-500">ভার্সন</span><span class="font-medium">v2.1 • Gemini 1.5</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">ডেটাবেস</span><span class="font-medium">Supabase + Local</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">হোস্টিং</span><span class="font-medium">Vercel Ready</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">ভাষা</span><span class="font-medium">বাংলা + English</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- UPLOAD TAB -->
+    <section id="tab-upload" class="hidden space-y-6">
+      <div>
+        <h1 class="text-2xl font-bold">📁 ফাইল আপলোড ম্যানেজমেন্ট</h1>
+        <p class="text-slate-500 text-sm mt-1">যেকোনো ফাইল (PDF, Excel, Word, Text, Image) আপলোড করে নাম দিয়ে সেভ করুন</p>
+      </div>
+
+      <div class="grid lg:grid-cols-[1fr_1.2fr] gap-6">
+        <!-- Upload Form -->
+        <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6">
+          <h3 class="font-semibold mb-4">নতুন ফাইল আপলোড</h3>
+          <form id="uploadForm" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-1.5">রিপোর্ট / ফাইলের নাম *</label>
+              <input id="fileDisplayName" type="text" placeholder="যেমন: জানুয়ারি বিক্রয় রিপোর্ট ২০২৬" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none text-sm" required>
+              <p class="text-xs text-slate-400 mt-1">এই নামটি AI রিপোর্ট পেজে দেখা যাবে</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1.5">বিবরণ (ঐচ্ছিক)</label>
+              <input id="fileDesc" type="text" placeholder="সংক্ষিপ্ত বিবরণ..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1.5">ফাইল নির্বাচন *</label>
+              <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center hover:border-violet-300 hover:bg-violet-50/50 transition cursor-pointer group">
+                <div class="w-12 h-12 mx-auto bg-violet-100 rounded-xl flex items-center justify-center text-violet-600 group-hover:scale-110 transition">📤</div>
+                <div class="mt-3 font-medium text-sm">ফাইল ড্র্যাগ করুন বা ক্লিক করে নির্বাচন করুন</div>
+                <div class="text-xs text-slate-400 mt-1">PDF, DOCX, XLSX, CSV, TXT, JPG, PNG - Max 10MB</div>
+                <input id="fileInput" type="file" class="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.json,.png,.jpg,.jpeg,.webp">
+                <div id="selectedFileInfo" class="hidden mt-4 bg-white border border-slate-200 rounded-xl p-3 text-left">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">📄</div>
+                    <div class="flex-1 min-w-0">
+                      <div id="selFileName" class="text-sm font-medium truncate"></div>
+                      <div id="selFileMeta" class="text-xs text-slate-500"></div>
+                    </div>
+                    <button type="button" onclick="clearSelectedFile()" class="text-slate-400 hover:text-red-500">✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button type="submit" id="uploadBtn" class="w-full bg-slate-900 text-white font-semibold py-3 rounded-xl hover:bg-black transition flex items-center justify-center gap-2">
+              <span>💾</span> সেভ করুন
+            </button>
+          </form>
+        </div>
+
+        <!-- File List -->
+        <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm flex flex-col max-h-[700px]">
+          <div class="p-5 border-b border-slate-100 flex items-center justify-between gap-3">
+            <h3 class="font-semibold">সেভ করা ফাইলসমূহ (<span id="fileCount">0</span>)</h3>
+            <div class="flex gap-2">
+              <input id="fileSearch" type="text" placeholder="সার্চ..." class="px-3 py-1.5 rounded-full border border-slate-200 text-xs w-32 focus:border-violet-500 outline-none">
+              <button onclick="exportAllFiles()" class="text-xs px-3 py-1.5 bg-slate-100 rounded-full hover:bg-slate-200">Export</button>
+            </div>
+          </div>
+          <div id="fileList" class="flex-1 overflow-auto p-3 space-y-2 scrollbar-thin"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI REPORT TAB -->
+    <section id="tab-ai" class="hidden space-y-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div>
+          <h1 class="text-2xl font-bold">🤖 AI স্মার্ট রিপোর্ট জেনারেটর</h1>
+          <p class="text-slate-500 text-sm mt-1">এক বা একাধিক ফাইল সিলেক্ট করে বাংলায় বা ইংরেজিতে কমান্ড দিন</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">Gemini 1.5 Flash</span>
+          <span class="px-3 py-1.5 bg-slate-100 rounded-full" id="aiFileCountBadge">0 ফাইল সিলেক্ট</span>
+        </div>
+      </div>
+
+      <div class="grid lg:grid-cols-[380px_1fr] gap-6 items-start">
+        <!-- Selector -->
+        <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm flex flex-col lg:sticky lg:top-[84px] max-h-[80vh]">
+          <div class="p-4 border-b border-slate-100">
+            <h3 class="font-semibold text-sm">১. রিপোর্ট নির্বাচন করুন</h3>
+            <p class="text-xs text-slate-500 mt-1">এক বা একাধিক ফাইল টিক দিন</p>
+            <input id="aiSearch" type="text" placeholder="ফাইল খুঁজুন..." class="mt-3 w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:border-violet-500 outline-none">
+            <div class="mt-3 flex gap-2">
+              <button onclick="selectAllAI()" class="flex-1 py-1.5 text-xs bg-slate-900 text-white rounded-full">সব সিলেক্ট</button>
+              <button onclick="clearAllAI()" class="flex-1 py-1.5 text-xs bg-slate-100 rounded-full">ক্লিয়ার</button>
+            </div>
+          </div>
+          <div id="aiFileSelector" class="flex-1 overflow-auto p-3 space-y-2 scrollbar-thin"></div>
+          <div class="p-3 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+            <div class="text-xs text-slate-500">💡 টিপস: ভালো রেজাল্টের জন্য TXT, CSV, JSON ফাইল ব্যবহার করুন। PDF এর টেক্সটও পড়া যাবে।</div>
+          </div>
+        </div>
+
+        <!-- Command & Result -->
+        <div class="space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5 lg:p-6">
+            <h3 class="font-semibold text-sm mb-3">২. কমান্ড / নির্দেশনা দিন (বাংলা বা ইংরেজি)</h3>
+            <textarea id="aiCommand" rows="4" placeholder="উদাহরণ:
+• এই ফাইলগুলো থেকে জানুয়ারি মাসের মোট বিক্রয়ের সারাংশ বানাও
+• সবচেয়ে বেশি বিক্রি হওয়া ৫টি প্রোডাক্টের তালিকা দাও
+• Make a professional sales report with charts and summary
+• এই ডাটা থেকে কী কী সমস্যা আছে বের করো
+
+অথবা প্রশ্ন করুন: 'গত মাসে লাভ কত ছিল?' - AI ফাইল থেকে উত্তর দেবে।" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none text-sm resize-none"></textarea>
+            
+            <div class="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2">
+              <button onclick="setCommand('এই ফাইলগুলো থেকে একটি প্রফেশনাল সারাংশ রিপোর্ট তৈরি করো, হেডিং, বুলেট পয়েন্ট ও টেবিল সহ।')" class="text-xs p-2.5 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-xl border border-violet-100 text-left">📊 সারাংশ রিপোর্ট</button>
+              <button onclick="setCommand('এই ডাটা বিশ্লেষণ করে গুরুত্বপূর্ণ ইনসাইট, ট্রেন্ড এবং সুপারিশ দাও।')" class="text-xs p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl border border-blue-100 text-left">💡 ইনসাইট ও ট্রেন্ড</button>
+              <button onclick="setCommand('Make a detailed professional report in English with executive summary, key findings, and recommendations.')" class="text-xs p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-100 text-left">🇬🇧 English Report</button>
+              <button onclick="setCommand('এই ফাইল থেকে সব প্রশ্নের উত্তর দাও। আমি যা জিজ্ঞাসা করব তার সঠিক উত্তর ফাইল থেকে বের করো।')" class="text-xs p-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl border border-amber-100 text-left">❓ Q&A মোড</button>
+            </div>
+
+            <div class="mt-5 flex flex-col sm:flex-row gap-3">
+              <button id="generateBtn" onclick="generateAIReport()" class="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold py-3 rounded-xl hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-200 flex items-center justify-center gap-2">
+                <span>✨</span> রিপোর্ট তৈরি করুন
+              </button>
+              <button onclick="clearAIResult()" class="px-6 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium hover:bg-slate-50">ক্লিয়ার</button>
+            </div>
+            <div id="aiStatus" class="hidden mt-3 text-xs p-3 rounded-xl"></div>
+          </div>
+
+          <div id="aiResultCard" class="hidden bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 class="font-semibold text-sm flex items-center gap-2"><span>📑</span> AI Generated Report</h3>
+              <div class="flex gap-1.5">
+                <button onclick="copyReport()" class="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-full">📋 কপি</button>
+                <button onclick="downloadReport('txt')" class="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-full">TXT</button>
+                <button onclick="downloadReport('md')" class="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-full">MD</button>
+                <button onclick="downloadReport('html')" class="px-3 py-1.5 text-xs bg-violet-600 text-white hover:bg-violet-700 rounded-full">PDF/HTML</button>
+              </div>
+            </div>
+            <div id="aiResult" class="p-6 lg:p-8 prose prose-slate max-w-none prose-sm lg:prose-base prose-headings:font-bold prose-h1:text-2xl prose-h2:text-xl prose-table:border prose-th:bg-slate-50"></div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex gap-2">
+              <input id="followUpInput" type="text" placeholder="ফলো-আপ প্রশ্ন করুন... যেমন: আরো বিস্তারিত দাও" class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-violet-500 outline-none" onkeydown="if(event.key==='Enter') askFollowUp()">
+              <button onclick="askFollowUp()" class="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium">জিজ্ঞাসা</button>
+            </div>
+          </div>
+
+          <div id="aiEmpty" class="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+            <div class="w-16 h-16 mx-auto bg-violet-50 rounded-2xl flex items-center justify-center text-2xl">🤖</div>
+            <h3 class="mt-4 font-semibold">AI রিপোর্ট প্রস্তুত</h3>
+            <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">বাম পাশ থেকে ফাইল সিলেক্ট করুন, উপরে কমান্ড লিখুন, তারপর রিপোর্ট তৈরি করুন। AI আপনার ফাইল পড়ে সুন্দর রিপোর্ট বানিয়ে দেবে।</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="font-bold text-lg">⚙️ সেটিংস ও API কনফিগারেশন</h3>
+      <button onclick="closeSettings()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200">✕</button>
+    </div>
+    <div class="p-6 space-y-5 max-h-[70vh] overflow-auto">
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
+        <b>🔑 Gemini API Key কীভাবে পাবেন?</b><br/>
+        1. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline font-semibold">aistudio.google.com</a> এ যান<br/>
+        2. Create API Key ক্লিক করুন<br/>
+        3. কপি করে এখানে পেস্ট করুন<br/>
+        ফ্রি কোটা: প্রতি মিনিটে 60 রিকোয়েস্ট
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1.5">Gemini API Key *</label>
+        <input id="settingGeminiKey" type="password" placeholder="AIza..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 outline-none text-sm">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1.5">Gemini Model</label>
+          <select id="settingModel" class="w-full px-3 py-3 rounded-xl border border-slate-200 text-sm">
+            <option value="gemini-1.5-flash">gemini-1.5-flash (Fast)</option>
+            <option value="gemini-1.5-pro">gemini-1.5-pro (Smart)</option>
+            <option value="gemini-2.0-flash-exp">gemini-2.0-flash-exp (Latest)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1.5">ভাষা</label>
+          <select id="settingLang" class="w-full px-3 py-3 rounded-xl border border-slate-200 text-sm">
+            <option value="auto">Auto (Command অনুযায়ী)</option>
+            <option value="bn">বাংলা</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
+      <hr class="border-slate-100">
+      <h4 class="font-semibold text-sm">Supabase (ঐচ্ছিক - Live Deployment এর জন্য)</h4>
+      <div>
+        <label class="block text-xs font-medium mb-1">Supabase URL</label>
+        <input id="settingSupabaseUrl" type="text" placeholder="https://xyz.supabase.co" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none">
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">Supabase Anon Key</label>
+        <input id="settingSupabaseKey" type="password" placeholder="eyJ..." class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none">
+      </div>
+      <div class="bg-slate-50 rounded-xl p-3 text-xs text-slate-600">
+        Supabase ব্যবহার করলে ফাইলগুলো ক্লাউডে সেভ হবে। না দিলে LocalStorage এ সেভ হবে (ডেমোর জন্য ঠিক আছে)।
+      </div>
+    </div>
+    <div class="p-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
+      <button onclick="closeSettings()" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm">বাতিল</button>
+      <button onclick="saveSettings()" class="px-6 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-semibold hover:bg-violet-700">সেভ করুন</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================== STATE ================== */
+let files = JSON.parse(localStorage.getItem('uzzal_files') || '[]');
+let reportsCount = parseInt(localStorage.getItem('uzzal_reports_count') || '0');
+let settings = JSON.parse(localStorage.getItem('uzzal_settings') || '{}');
+let selectedAIIds = new Set();
+let lastGeneratedReport = "";
+let selectedFileObj = null;
+
+/* ================== AUTH ================== */
+const AUTH_USER = "Uzzal";
+const AUTH_PASS = "Goodman321";
+
+function checkAuth(){
+  const isLogged = localStorage.getItem('uzzal_auth') === 'true';
+  document.getElementById('loginPage').classList.toggle('hidden', isLogged);
+  document.getElementById('mainApp').classList.toggle('hidden', !isLogged);
+  if(isLogged){ initApp(); }
+}
+document.getElementById('loginForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  const err = document.getElementById('loginError');
+  if(u===AUTH_USER && p===AUTH_PASS){
+    localStorage.setItem('uzzal_auth','true');
+    checkAuth();
+  } else {
+    err.textContent = "❌ ইউজার আইডি বা পাসওয়ার্ড ভুল! সঠিক: Uzzal / Goodman321";
+    err.classList.remove('hidden');
+  }
+});
+function logout(){
+  localStorage.removeItem('uzzal_auth');
+  location.reload();
+}
+
+/* ================== TABS ================== */
+function switchTab(tab){
+  document.querySelectorAll('[id^="tab-"]').forEach(el=>el.classList.add('hidden'));
+  document.getElementById('tab-'+tab).classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(b=>{
+    const isActive = b.dataset.tab===tab;
+    b.className = isActive ? "tab-btn px-5 py-2 rounded-full text-sm font-medium bg-white shadow-sm text-slate-900" : "tab-btn px-5 py-2 rounded-full text-sm font-medium text-slate-600 hover:text-slate-900";
+  });
+  document.querySelectorAll('.tab-btn-m').forEach(b=>{
+    const isActive = b.dataset.tab===tab;
+    b.className = isActive ? "tab-btn-m flex-1 py-2.5 rounded-xl text-sm font-medium bg-slate-900 text-white" : "tab-btn-m flex-1 py-2.5 rounded-xl text-sm font-medium bg-slate-100 text-slate-700";
+  });
+  if(tab==='home') renderHome();
+  if(tab==='upload') renderFileList();
+  if(tab==='ai') renderAISelector();
+}
+
+/* ================== INIT ================== */
+function initApp(){
+  renderHome();
+  renderFileList();
+  renderAISelector();
+  updateStats();
+  // load settings to inputs
+  document.getElementById('settingGeminiKey').value = settings.geminiKey || '';
+  document.getElementById('settingModel').value = settings.model || 'gemini-1.5-flash';
+  document.getElementById('settingLang').value = settings.lang || 'auto';
+  document.getElementById('settingSupabaseUrl').value = settings.supabaseUrl || '';
+  document.getElementById('settingSupabaseKey').value = settings.supabaseKey || '';
+}
+
+/* ================== HOME ================== */
+function renderHome(){
+  const recent = [...files].sort((a,b)=>b.uploadedAt-a.uploadedAt).slice(0,5);
+  const listEl = document.getElementById('homeRecentList');
+  if(recent.length===0){
+    listEl.innerHTML = `<div class="p-8 text-center text-sm text-slate-400">কোনো ফাইল নেই। প্রথমে ফাইল আপলোড করুন।</div>`;
+  } else {
+    listEl.innerHTML = recent.map(f=>`
+      <div class="p-4 flex items-center gap-3 hover:bg-slate-50">
+        <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600 text-sm font-bold">${getFileIcon(f.fileName)}</div>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-sm truncate">${escapeHtml(f.displayName)}</div>
+          <div class="text-xs text-slate-500 truncate">${escapeHtml(f.fileName)} • ${formatBytes(f.size)} • ${timeAgo(f.uploadedAt)}</div>
+        </div>
+        <div class="text-xs text-slate-400">${f.fileType.split('/')[1]||'file'}</div>
+      </div>
+    `).join('');
+  }
+}
+function updateStats(){
+  document.getElementById('statTotalFiles').textContent = files.length;
+  document.getElementById('statReports').textContent = reportsCount;
+  const totalBytes = files.reduce((s,f)=>s+f.size,0);
+  document.getElementById('statStorage').textContent = formatBytes(totalBytes);
+  const gemEl = document.getElementById('statGemini');
+  if(settings.geminiKey){
+    gemEl.textContent = "✅ Connected";
+    gemEl.className = "mt-4 text-sm font-semibold text-emerald-600";
+  } else {
+    gemEl.textContent = "⚠️ API Key প্রয়োজন";
+    gemEl.className = "mt-4 text-sm font-semibold text-amber-600";
+  }
+}
+
+/* ================== FILE UPLOAD ================== */
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', ()=> fileInput.click());
+dropZone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropZone.classList.add('border-violet-400','bg-violet-50'); });
+dropZone.addEventListener('dragleave', ()=>{ dropZone.classList.remove('border-violet-400','bg-violet-50'); });
+dropZone.addEventListener('drop', (e)=>{
+  e.preventDefault();
+  dropZone.classList.remove('border-violet-400','bg-violet-50');
+  if(e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', ()=>{ if(fileInput.files[0]) handleFileSelect(fileInput.files[0]); });
+
+function handleFileSelect(file){
+  if(file.size > 10*1024*1024){ alert('ফাইল 10MB এর বেশি হতে পারবে না'); return; }
+  selectedFileObj = file;
+  document.getElementById('selectedFileInfo').classList.remove('hidden');
+  document.getElementById('selFileName').textContent = file.name;
+  document.getElementById('selFileMeta').textContent = `${formatBytes(file.size)} • ${file.type || 'unknown'}`;
+}
+function clearSelectedFile(){
+  selectedFileObj = null;
+  fileInput.value = '';
+  document.getElementById('selectedFileInfo').classList.add('hidden');
+}
+
+document.getElementById('uploadForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const displayName = document.getElementById('fileDisplayName').value.trim();
+  const desc = document.getElementById('fileDesc').value.trim();
+  if(!displayName){ alert('রিপোর্ট নাম দিন'); return; }
+  if(!selectedFileObj){ alert('ফাইল নির্বাচন করুন'); return; }
+
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true; btn.innerHTML = "⏳ সেভ হচ্ছে...";
+
+  try{
+    const content = await readFileContent(selectedFileObj);
+    const newFile = {
+      id: Date.now().toString(),
+      displayName,
+      description: desc,
+      fileName: selectedFileObj.name,
+      fileType: selectedFileObj.type || 'application/octet-stream',
+      size: selectedFileObj.size,
+      content: content.slice(0, 20000), // limit for localStorage & AI prompt
+      fullContentPreview: content.slice(0, 100000),
+      uploadedAt: Date.now()
+    };
+    files.push(newFile);
+    localStorage.setItem('uzzal_files', JSON.stringify(files));
+    document.getElementById('fileDisplayName').value = '';
+    document.getElementById('fileDesc').value = '';
+    clearSelectedFile();
+    renderFileList();
+    renderHome();
+    updateStats();
+    renderAISelector();
+    alert('✅ ফাইল সফলভাবে সেভ হয়েছে!');
+  } catch(err){
+    alert('Error: '+err.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = "<span>💾</span> সেভ করুন";
+  }
+});
+
+function readFileContent(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    if(file.type.startsWith('text/') || file.name.endsWith('.csv') || file.name.endsWith('.json') || file.name.endsWith('.txt') || file.name.endsWith('.md')){
+      reader.readAsText(file);
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = ()=> reject(reader.error);
+    } else {
+      // try read as text anyway, fallback to base64 info
+      reader.readAsText(file);
+      reader.onload = ()=>{
+        let txt = reader.result;
+        // if binary gibberish, keep metadata
+        if(txt.length>0 && /^[\x00-\x08\x0E-\x1F]/.test(txt.slice(0,100))){
+          resolve(`[Binary file: ${file.name}, type: ${file.type}, size: ${file.size} bytes. Content not directly readable. Please provide text-based files for best AI results.]`);
+        } else {
+          resolve(txt || `[File: ${file.name} - no text content extracted]`);
+        }
+      };
+      reader.onerror = ()=>{
+        resolve(`[File: ${file.name}, size: ${formatBytes(file.size)}]`);
+      };
+    }
+  });
+}
+
+function renderFileList(){
+  const search = (document.getElementById('fileSearch').value || '').toLowerCase();
+  const listEl = document.getElementById('fileList');
+  const filtered = files.filter(f=> f.displayName.toLowerCase().includes(search) || f.fileName.toLowerCase().includes(search));
+  document.getElementById('fileCount').textContent = files.length;
+
+  if(filtered.length===0){
+    listEl.innerHTML = `<div class="py-16 text-center"><div class="text-3xl">📂</div><div class="text-sm text-slate-500 mt-2">${files.length===0?'কোনো ফাইল আপলোড করা হয়নি':'কোনো ফাইল পাওয়া যায়নি'}</div></div>`;
+    return;
+  }
+  listEl.innerHTML = filtered.map(f=>`
+    <div class="group border border-slate-200 rounded-xl p-3 hover:border-violet-200 hover:bg-violet-50/30 transition">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-sm shrink-0">${getFileIcon(f.fileName)}</div>
+        <div class="flex-1 min-w-0">
+          <div class="font-medium text-sm truncate">${escapeHtml(f.displayName)}</div>
+          <div class="text-xs text-slate-500 truncate">${escapeHtml(f.fileName)} • ${formatBytes(f.size)}</div>
+          ${f.description?`<div class="text-xs text-slate-400 mt-1">${escapeHtml(f.description)}</div>`:''}
+          <div class="text-[11px] text-slate-400 mt-1">${new Date(f.uploadedAt).toLocaleString('bn-BD')} • ID: ${f.id.slice(-6)}</div>
+        </div>
+        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+          <button onclick="viewFile('${f.id}')" class="w-7 h-7 rounded-full bg-white border border-slate-200 hover:bg-slate-900 hover:text-white text-xs">👁️</button>
+          <button onclick="deleteFile('${f.id}')" class="w-7 h-7 rounded-full bg-white border border-slate-200 hover:bg-red-500 hover:text-white text-xs">🗑️</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+document.getElementById('fileSearch').addEventListener('input', renderFileList);
+
+function deleteFile(id){
+  if(!confirm('এই ফাইলটি ডিলিট করতে চান?')) return;
+  files = files.filter(f=>f.id!==id);
+  localStorage.setItem('uzzal_files', JSON.stringify(files));
+  selectedAIIds.delete(id);
+  renderFileList(); renderHome(); updateStats(); renderAISelector();
+}
+function viewFile(id){
+  const f = files.find(x=>x.id===id);
+  if(!f) return;
+  alert(`📄 ${f.displayName}\n\nফাইল: ${f.fileName}\nসাইজ: ${formatBytes(f.size)}\n\nকন্টেন্ট প্রিভিউ:\n${(f.content||'').slice(0,1000)}`);
+}
+function exportAllFiles(){
+  const dataStr = JSON.stringify(files, null, 2);
+  const blob = new Blob([dataStr], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='uzzal_files_backup.json'; a.click();
+}
+
+/* ================== AI REPORT ================== */
+function renderAISelector(){
+  const search = (document.getElementById('aiSearch').value || '').toLowerCase();
+  const el = document.getElementById('aiFileSelector');
+  const filtered = files.filter(f=> f.displayName.toLowerCase().includes(search) || f.fileName.toLowerCase().includes(search));
+  if(filtered.length===0){
+    el.innerHTML = `<div class="py-10 text-center text-xs text-slate-400">কোনো ফাইল নেই। প্রথমে আপলোড করুন।</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(f=>{
+    const checked = selectedAIIds.has(f.id) ? 'checked' : '';
+    return `<label class="flex items-start gap-3 p-3 rounded-xl border ${checked?'border-violet-300 bg-violet-50':'border-slate-200 hover:border-slate-300 bg-white'} cursor-pointer transition">
+      <input type="checkbox" value="${f.id}" ${checked} onchange="toggleAIFile('${f.id}')" class="mt-1 accent-violet-600">
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium truncate">${escapeHtml(f.displayName)}</div>
+        <div class="text-xs text-slate-500 truncate">${escapeHtml(f.fileName)} • ${formatBytes(f.size)}</div>
+      </div>
+    </label>`;
+  }).join('');
+  document.getElementById('aiFileCountBadge').textContent = `${selectedAIIds.size} ফাইল সিলেক্ট`;
+}
+document.getElementById('aiSearch').addEventListener('input', renderAISelector);
+function toggleAIFile(id){
+  if(selectedAIIds.has(id)) selectedAIIds.delete(id); else selectedAIIds.add(id);
+  renderAISelector();
+}
+function selectAllAI(){ files.forEach(f=>selectedAIIds.add(f.id)); renderAISelector(); }
+function clearAllAI(){ selectedAIIds.clear(); renderAISelector(); }
+function setCommand(txt){ document.getElementById('aiCommand').value = txt; document.getElementById('aiCommand').focus(); }
+
+function clearAIResult(){
+  document.getElementById('aiResultCard').classList.add('hidden');
+  document.getElementById('aiEmpty').classList.remove('hidden');
+  document.getElementById('aiResult').innerHTML = '';
+  document.getElementById('aiStatus').classList.add('hidden');
+}
+
+async function generateAIReport(isFollowUp=false, customPrompt=null){
+  const command = customPrompt || document.getElementById('aiCommand').value.trim();
+  if(!isFollowUp && selectedAIIds.size===0){ alert('অন্তত একটি ফাইল সিলেক্ট করুন'); return; }
+  if(!command){ alert('কমান্ড / প্রশ্ন লিখুন'); return; }
+
+  const selectedFiles = files.filter(f=>selectedAIIds.has(f.id));
+  const statusEl = document.getElementById('aiStatus');
+  const btn = document.getElementById('generateBtn');
+  statusEl.classList.remove('hidden');
+  statusEl.className = "mt-3 text-xs p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700";
+  statusEl.innerHTML = "⏳ AI রিপোর্ট তৈরি হচ্ছে... ফাইলগুলো বিশ্লেষণ করা হচ্ছে";
+  btn.disabled = true; btn.innerHTML = "⏳ প্রসেসিং...";
+
+  document.getElementById('aiEmpty').classList.add('hidden');
+
+  try{
+    let reportText = "";
+    if(!settings.geminiKey){
+      // Mock report
+      reportText = generateMockReport(selectedFiles, command);
+      statusEl.className = "mt-3 text-xs p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800";
+      statusEl.innerHTML = "⚠️ Demo Mode: Gemini API Key নেই, তাই মক রিপোর্ট দেখানো হচ্ছে। সেটিংস থেকে API Key যোগ করুন।";
+    } else {
+      reportText = await callGeminiAPI(selectedFiles, command);
+      statusEl.className = "mt-3 text-xs p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700";
+      statusEl.innerHTML = "✅ AI রিপোর্ট সফলভাবে তৈরি হয়েছে!";
+    }
+
+    lastGeneratedReport = reportText;
+    document.getElementById('aiResult').innerHTML = marked.parse(reportText);
+    document.getElementById('aiResultCard').classList.remove('hidden');
+    reportsCount++; localStorage.setItem('uzzal_reports_count', reportsCount.toString());
+    updateStats();
+    // scroll to result
+    document.getElementById('aiResultCard').scrollIntoView({behavior:'smooth'});
+  } catch(err){
+    statusEl.className = "mt-3 text-xs p-3 rounded-xl bg-red-50 border border-red-200 text-red-700";
+    statusEl.innerHTML = "❌ Error: "+err.message;
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.innerHTML = "<span>✨</span> রিপোর্ট তৈরি করুন";
+  }
+}
+
+function generateMockReport(selectedFiles, command){
+  const fileList = selectedFiles.map(f=>`- ${f.displayName} (${f.fileName})`).join('\n');
+  return `# 📊 AI রিপোর্ট (Demo Mode)
+
+**কমান্ড:** ${command}
+
+**নির্বাচিত ফাইলসমূহ:**
+${fileList}
+
+---
+
+## ১. সারাংশ
+এই রিপোর্টটি ${selectedFiles.length} টি ফাইলের উপর ভিত্তি করে তৈরি করা হয়েছে। আপনার কমান্ড অনুযায়ী: "${command}" — নিচে বিস্তারিত বিশ্লেষণ দেওয়া হলো।
+
+## ২. মূল ফলাফল
+- ফাইলগুলোতে মোট ${selectedFiles.reduce((s,f)=>s+f.size,0)} bytes ডাটা রয়েছে
+- গড় ফাইল সাইজ: ${formatBytes(selectedFiles.reduce((s,f)=>s+f.size,0)/selectedFiles.length)}
+- সর্বশেষ আপলোড: ${selectedFiles[0]? new Date(selectedFiles[0].uploadedAt).toLocaleString('bn-BD') : 'N/A'}
+
+## ৩. বিস্তারিত বিশ্লেষণ
+${selectedFiles.map(f=>`
+### ${f.displayName}
+- ফাইল: ${f.fileName}
+- বিবরণ: ${f.description || 'কোনো বিবরণ নেই'}
+- কন্টেন্ট প্রিভিউ: 
+\`\`\`
+${(f.content||'').slice(0,500)}
+\`\`\`
+`).join('\n')}
+
+## ৪. সুপারিশ
+1. আরো ডাটা আপলোড করুন উন্নত বিশ্লেষণের জন্য
+2. Gemini API Key যোগ করুন রিয়েল AI রিপোর্ট পেতে (Settings ⚙️)
+3. CSV/Excel ফাইল হলে AI আরো ভালো টেবিল বানাতে পারবে
+
+## ৫. উপসংহার
+এটি একটি ডেমো রিপোর্ট। আসল Gemini AI কানেক্ট করলে আরো স্মার্ট, প্রফেশনাল ও নির্ভুল রিপোর্ট পাবেন।
+
+---
+*Generated by Uzzal AI Portal • Demo Mode*`;
+}
+
+async function callGeminiAPI(selectedFiles, command){
+  const model = settings.model || 'gemini-1.5-flash';
+  const apiKey = settings.geminiKey;
+  const langInstruction = settings.lang==='bn' ? 'উত্তর বাংলায় দাও' : settings.lang==='en' ? 'Answer in English' : 'Answer in the same language as the user command (Bengali if command is Bengali, English if English)';
+  
+  // Build file contents prompt (limit total chars)
+  let filesPrompt = selectedFiles.map(f=>{
+    const contentSnippet = (f.fullContentPreview || f.content || '').slice(0, 12000);
+    return `--- FILE: ${f.displayName} (original: ${f.fileName}, size: ${formatBytes(f.size)}, desc: ${f.description||'N/A'}) ---\nCONTENT:\n${contentSnippet}\n--- END FILE ---`;
+  }).join('\n\n');
+
+  if(filesPrompt.length > 80000) filesPrompt = filesPrompt.slice(0,80000) + "\n[Truncated due to size limit]";
+
+  const systemPrompt = `You are Uzzal AI Report Assistant, a professional report generator.
+User has uploaded files and wants you to generate a smart report or answer questions from those files.
+
+Instructions:
+- ${langInstruction}
+- Be professional, structured, use headings (##), bullet points, tables (markdown) where appropriate
+- If user asks a question, answer precisely from the files. If answer not found, say so.
+- If user wants a report, make it beautiful: Title, Executive Summary, Key Findings, Details, Tables, Recommendations, Conclusion.
+- Always cite file names when using data.
+- Support both Bengali and English fluently.
+- Keep tone smart and helpful.
+
+Files Data:
+${filesPrompt}
+
+User Command / Question:
+${command}
+
+Now generate the final report/answer:`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: systemPrompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+    })
+  });
+
+  if(!res.ok){
+    const errText = await res.text();
+    throw new Error(`Gemini API Error ${res.status}: ${errText.slice(0,500)}`);
+  }
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if(!text) throw new Error('Gemini থেকে কোনো রেসপন্স পাওয়া যায়নি');
+  return text;
+}
+
+function askFollowUp(){
+  const q = document.getElementById('followUpInput').value.trim();
+  if(!q) return;
+  document.getElementById('followUpInput').value = '';
+  // Combine previous report context with new question
+  const combined = `Previous report context:\n${lastGeneratedReport.slice(0,8000)}\n\nNew follow-up question: ${q}\nAnswer based on files and previous report.`;
+  generateAIReport(true, combined);
+}
+
+/* ================== DOWNLOAD ================== */
+function copyReport(){
+  navigator.clipboard.writeText(lastGeneratedReport);
+  alert('✅ কপি হয়েছে!');
+}
+function downloadReport(type){
+  if(!lastGeneratedReport) return;
+  let content = lastGeneratedReport;
+  let mime = 'text/plain';
+  let ext = 'txt';
+  if(type==='md'){ mime='text/markdown'; ext='md'; }
+  if(type==='html'){
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>AI Report</title>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri&display=swap" rel="stylesheet">
+    <style>body{font-family:'Hind Siliguri',sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.7} h1,h2{color:#4f46e5} table{border-collapse:collapse;width:100%} th,td{border:1px solid #ddd;padding:8px} th{background:#f5f3ff} @media print{body{margin:0}}</style>
+    </head><body>${marked.parse(content)}<hr><small>Generated by Uzzal AI Portal - ${new Date().toLocaleString()}</small><script>window.print()<\/script></body></html>`;
+    const w = window.open(); w.document.write(html); w.document.close(); return;
+  }
+  const blob = new Blob([content], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`AI_Report_${Date.now()}.${ext}`; a.click();
+}
+
+/* ================== SETTINGS ================== */
+function openSettings(){ document.getElementById('settingsModal').classList.remove('hidden'); }
+function closeSettings(){ document.getElementById('settingsModal').classList.add('hidden'); }
+function saveSettings(){
+  settings.geminiKey = document.getElementById('settingGeminiKey').value.trim();
+  settings.model = document.getElementById('settingModel').value;
+  settings.lang = document.getElementById('settingLang').value;
+  settings.supabaseUrl = document.getElementById('settingSupabaseUrl').value.trim();
+  settings.supabaseKey = document.getElementById('settingSupabaseKey').value.trim();
+  localStorage.setItem('uzzal_settings', JSON.stringify(settings));
+  updateStats();
+  closeSettings();
+  alert('✅ সেটিংস সেভ হয়েছে!');
+}
+
+/* ================== UTILS ================== */
+function formatBytes(bytes){ if(bytes===0) return '0 B'; const k=1024; const sizes=['B','KB','MB','GB']; const i=Math.floor(Math.log(bytes)/Math.log(k)); return parseFloat((bytes/Math.pow(k,i)).toFixed(1))+' '+sizes[i]; }
+function timeAgo(ts){ const s=Math.floor((Date.now()-ts)/1000); if(s<60) return 'এখনই'; if(s<3600) return Math.floor(s/60)+' মিনিট আগে'; if(s<86400) return Math.floor(s/3600)+' ঘণ্টা আগে'; return Math.floor(s/86400)+' দিন আগে'; }
+function getFileIcon(name){ const ext=name.split('.').pop().toLowerCase(); if(['pdf'].includes(ext)) return '📕'; if(['xls','xlsx','csv'].includes(ext)) return '📗'; if(['doc','docx'].includes(ext)) return '📘'; if(['png','jpg','jpeg','webp'].includes(ext)) return '🖼️'; if(['json'].includes(ext)) return '🔧'; return '📄'; }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+
+/* init */
+checkAuth();
+</script>
+</body>
+</html>
