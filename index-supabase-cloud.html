@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uzzal AI Portal - Cloud Version (Supabase)</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>*{font-family:'Hind Siliguri',Inter,sans-serif}</style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+<div class="max-w-6xl mx-auto p-6">
+  <div class="bg-white rounded-2xl p-6 border shadow-sm mb-6">
+    <h1 class="text-2xl font-bold">☁️ Uzzal AI Portal - Supabase Cloud Version</h1>
+    <p class="text-sm text-slate-500 mt-1">এই ভার্সনে ফাইল Supabase Cloud এ সেভ হবে। index.html এর বদলে এই ফাইলটি ব্যবহার করুন যদি Cloud চান।</p>
+    <div class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+      <b>Setup:</b> নিচে Supabase URL ও Anon Key বসান, তারপর এই ফাইলটি Vercel এ index.html নামে deploy করুন।
+    </div>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-6">
+    <div class="bg-white rounded-2xl p-6 border shadow-sm">
+      <h3 class="font-semibold mb-3">Supabase Config</h3>
+      <input id="sbUrl" placeholder="https://xyz.supabase.co" class="w-full mb-3 px-4 py-2.5 rounded-xl border text-sm">
+      <input id="sbKey" placeholder="anon key eyJ..." class="w-full mb-3 px-4 py-2.5 rounded-xl border text-sm">
+      <input id="gemKey" placeholder="Gemini API Key AIza..." class="w-full mb-3 px-4 py-2.5 rounded-xl border text-sm">
+      <button onclick="initCloud()" class="w-full bg-violet-600 text-white py-2.5 rounded-xl font-semibold">Connect & Load Files</button>
+      <div id="status" class="mt-3 text-xs p-2 rounded-lg bg-slate-50"></div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-6 border shadow-sm">
+      <h3 class="font-semibold mb-3">Cloud Upload Test</h3>
+      <input id="displayName" placeholder="রিপোর্ট নাম" class="w-full mb-3 px-4 py-2.5 rounded-xl border text-sm">
+      <input type="file" id="fileInput" class="w-full mb-3 text-sm">
+      <button onclick="uploadToCloud()" class="w-full bg-slate-900 text-white py-2.5 rounded-xl">☁️ Supabase এ আপলোড</button>
+      <div id="fileList" class="mt-4 space-y-2 max-h-[300px] overflow-auto"></div>
+    </div>
+  </div>
+
+  <div class="mt-6 bg-white rounded-2xl p-6 border shadow-sm">
+    <h3 class="font-semibold mb-3">AI Report (Gemini)</h3>
+    <textarea id="command" rows="3" placeholder="বাংলায় কমান্ড দিন..." class="w-full px-4 py-3 rounded-xl border text-sm"></textarea>
+    <button onclick="generateCloudReport()" class="mt-3 px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-semibold">✨ AI রিপোর্ট বানাও</button>
+    <div id="aiResult" class="mt-4 prose prose-sm max-w-none p-4 bg-slate-50 rounded-xl"></div>
+  </div>
+</div>
+
+<script>
+let supabase = null;
+let cloudFiles = [];
+let geminiKey = '';
+
+async function initCloud(){
+  const url = document.getElementById('sbUrl').value.trim();
+  const key = document.getElementById('sbKey').value.trim();
+  geminiKey = document.getElementById('gemKey').value.trim();
+  if(!url || !key){ alert('URL ও Key দিন'); return; }
+  supabase = window.supabase.createClient(url, key);
+  document.getElementById('status').innerHTML = '⏳ Connecting...';
+  try{
+    const { data, error } = await supabase.from('files').select('*').order('uploaded_at', {ascending:false}).limit(20);
+    if(error) throw error;
+    cloudFiles = data;
+    document.getElementById('status').innerHTML = `✅ Connected! ${data.length} files found`;
+    renderCloudList();
+  }catch(e){
+    document.getElementById('status').innerHTML = `❌ Error: ${e.message}`;
+  }
+}
+
+function renderCloudList(){
+  const el = document.getElementById('fileList');
+  if(cloudFiles.length===0){ el.innerHTML = '<div class="text-xs text-slate-400">কোনো ফাইল নেই</div>'; return; }
+  el.innerHTML = cloudFiles.map(f=>`
+    <div class="p-2 border rounded-xl text-xs flex justify-between">
+      <div><b>${f.display_name}</b><br/>${f.file_name} • ${Math.round(f.size/1024)}KB</div>
+      <button onclick="deleteCloud('${f.id}')" class="text-red-500">🗑️</button>
+    </div>
+  `).join('');
+}
+
+async function uploadToCloud(){
+  const file = document.getElementById('fileInput').files[0];
+  const displayName = document.getElementById('displayName').value.trim();
+  if(!file || !displayName){ alert('ফাইল ও নাম দিন'); return; }
+  if(!supabase){ alert('প্রথমে Connect করুন'); return; }
+  document.getElementById('status').innerHTML = '⏳ Uploading...';
+  try{
+    const text = await file.text();
+    const id = Date.now().toString();
+    const payload = {
+      id,
+      display_name: displayName,
+      file_name: file.name,
+      file_type: file.type,
+      size: file.size,
+      content: text.slice(0,20000),
+      full_content_preview: text.slice(0,100000),
+      uploaded_at: Date.now()
+    };
+    const { error } = await supabase.from('files').insert(payload);
+    if(error) throw error;
+    document.getElementById('status').innerHTML = '✅ Uploaded to Cloud!';
+    initCloud();
+  }catch(e){
+    document.getElementById('status').innerHTML = `❌ ${e.message}`;
+  }
+}
+
+async function deleteCloud(id){
+  if(!confirm('Delete?')) return;
+  const { error } = await supabase.from('files').delete().eq('id', id);
+  if(error) alert(error.message); else initCloud();
+}
+
+async function generateCloudReport(){
+  const cmd = document.getElementById('command').value.trim();
+  if(!cmd){ alert('Command লিখুন'); return; }
+  if(!geminiKey){ alert('Gemini Key দিন'); return; }
+  if(cloudFiles.length===0){ alert('কোনো ফাইল নেই'); return; }
+
+  document.getElementById('aiResult').innerHTML = '⏳ AI রিপোর্ট তৈরি হচ্ছে...';
+  const filesPrompt = cloudFiles.slice(0,5).map(f=>`FILE: ${f.display_name}\nCONTENT: ${(f.content||'').slice(0,8000)}`).join('\n\n---\n\n');
+  const prompt = `You are a report assistant. Files:\n${filesPrompt}\n\nUser command: ${cmd}\nGenerate professional report in same language as command.`;
+
+  try{
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.7, maxOutputTokens:8192} })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(JSON.stringify(data).slice(0,500));
+    const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
+    document.getElementById('aiResult').innerHTML = marked.parse(txt);
+  }catch(e){
+    document.getElementById('aiResult').innerHTML = `<span class="text-red-500">Error: ${e.message}</span>`;
+  }
+}
+</script>
+</body>
+</html>

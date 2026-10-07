@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Direct Login - Uzzal Portal</title></head>
+<body style="font-family:sans-serif; text-align:center; padding:50px; background:#f8fafc;">
+<h1>🔓 Direct Login</h1>
+<p>এই পেজটি খুললেই অটো লগইন হয়ে যাবে</p>
+<div id="status" style="margin:20px; padding:20px; background:white; border-radius:12px; border:2px solid #e2e8f0;">⏳ লগইন করা হচ্ছে...</div>
+<script>
+  localStorage.setItem('uzzal_auth','true');
+  document.getElementById('status').innerHTML = '✅ লগইন সফল! 2 সেকেন্ডে হোম পেজে যাচ্ছে...<br><br>ID: Uzzal<br>Pass: Goodman321<br><br>যদি না যায়, <a href="/">এখানে ক্লিক করুন</a>';
+  setTimeout(()=>{
+    window.location.href = '/';
+  }, 2000);
+</script>
+</body>
+</html>

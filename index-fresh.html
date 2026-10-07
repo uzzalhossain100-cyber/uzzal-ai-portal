@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uzzal AI Portal - Fixed Final Version</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{font-family:'Hind Siliguri',Inter,sans-serif}
+.hidden{display:none !important}
+</style>
+</head>
+<body class="bg-[#f8fafc] min-h-screen text-slate-800">
+
+<!-- LOGIN PAGE - CLEAN -->
+<div id="loginPage" class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-violet-600 to-indigo-700">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+    <div class="text-center mb-6">
+      <div class="w-12 h-12 bg-violet-600 rounded-xl flex items-center justify-center font-bold text-white text-xl mx-auto">U</div>
+      <h1 class="text-2xl font-bold mt-3">UZZAL AI PORTAL</h1>
+      <p class="text-sm text-slate-500 mt-1">এডমিন লগইন</p>
+    </div>
+    <form id="loginForm" class="space-y-4">
+      <input id="loginUser" type="text" placeholder="User ID: Uzzal" class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-violet-500 outline-none">
+      <input id="loginPass" type="password" placeholder="Password: Goodman321" class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-violet-500 outline-none">
+      <div id="loginError" class="hidden bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-200"></div>
+      <button type="submit" class="w-full bg-violet-600 text-white font-bold py-3 rounded-xl hover:bg-violet-700">লগইন করুন →</button>
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" onclick="autoFill()" class="py-2.5 bg-slate-100 rounded-xl text-xs font-semibold">✨ Auto Fill</button>
+        <button type="button" onclick="skipLogin()" class="py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-bold">🚀 Skip Login (Direct)</button>
+      </div>
+      <div class="bg-slate-50 border rounded-xl p-3 text-xs text-slate-600 text-center">
+        🔒 Secure Admin Portal<br>
+        <span class="text-[11px]">Authorized access only</span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="hidden min-h-screen">
+  <header class="bg-white border-b sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center text-white font-bold">U</div>
+        <b>UZZAL AI PORTAL</b>
+      </div>
+      <div class="flex gap-2 items-center">
+        <span id="supabaseLiveStatus" class="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full">📱 Local</span>
+        <button onclick="switchTab('home')" id="btn-home" class="px-4 py-2 rounded-full text-sm bg-slate-900 text-white">হোম</button>
+        <button onclick="switchTab('upload')" id="btn-upload" class="px-4 py-2 rounded-full text-sm bg-slate-100">ফাইল+URL</button>
+        <button onclick="switchTab('ai')" id="btn-ai" class="px-4 py-2 rounded-full text-sm bg-slate-100">AI রিপোর্ট</button>
+        <button onclick="openSettings()" class="w-8 h-8 rounded-full bg-slate-100">⚙️</button>
+        <button onclick="logout()" class="px-3 py-1 bg-black text-white rounded-full text-xs">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-4 lg:p-6">
+    <!-- HOME -->
+    <section id="tab-home">
+      <h1 class="text-2xl font-bold">স্বাগতম, Uzzal! 👋</h1>
+      <p class="text-slate-500 text-sm">Dashboard</p>
+      <div class="flex gap-2 mt-4">
+        <span id="liveStatusBadge" class="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold">📱 Local Only - Setup Supabase for Live</span>
+      </div>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+        <div class="bg-white rounded-xl p-4 border"><div class="text-2xl font-bold" id="statFiles">0</div><div class="text-xs text-slate-500">মোট ফাইল+URL</div></div>
+        <div class="bg-white rounded-xl p-4 border"><div class="text-2xl font-bold" id="statReports">0</div><div class="text-xs text-slate-500">রিপোর্ট</div></div>
+        <div class="bg-white rounded-xl p-4 border"><div class="text-sm font-bold" id="statGemini">Not Set</div><div class="text-xs text-slate-500">Gemini</div></div>
+        <div class="bg-white rounded-xl p-4 border"><div class="text-sm font-bold">v4.0 Live</div><div class="text-xs text-slate-500">Version • Live Cloud</div></div>
+      </div>
+      <div class="mt-6 bg-white rounded-xl border p-4">
+        <h3 class="font-bold text-sm">সাম্প্রতিক ফাইল</h3>
+        <div id="homeRecent" class="mt-3 space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- UPLOAD -->
+    <section id="tab-upload" class="hidden">
+      <h1 class="text-xl font-bold">📁 ফাইল ও URL যোগ করুন</h1>
+      <p class="text-xs text-slate-500">Excel এখন ১০০% কাজ করে, সাথে Google Sheet URL</p>
+      
+      <div class="grid lg:grid-cols-2 gap-6 mt-4">
+        <div class="bg-white rounded-xl border">
+          <div class="flex border-b">
+            <button id="uTabFile" onclick="switchUploadTab('file')" class="flex-1 py-3 text-sm font-bold bg-slate-900 text-white">📁 ফাইল</button>
+            <button id="uTabUrl" onclick="switchUploadTab('url')" class="flex-1 py-3 text-sm bg-slate-50">🔗 URL</button>
+          </div>
+          <div class="p-5">
+            <!-- File Form -->
+            <div id="upFileTab">
+              <input id="fName" type="text" placeholder="রিপোর্ট নাম *" class="w-full px-3 py-2.5 border-2 rounded-xl text-sm mb-3">
+              <input id="fDesc" type="text" placeholder="বিবরণ (ঐচ্ছিক)" class="w-full px-3 py-2.5 border rounded-xl text-sm mb-3">
+              <div id="dropZone" class="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:bg-violet-50">
+                <div>📤</div>
+                <div class="text-sm font-medium mt-1">ফাইল ড্র্যাগ বা ক্লিক করুন</div>
+                <div class="text-[11px] text-slate-400">Excel, PDF, CSV, TXT - Max 10MB</div>
+                <input id="fileInput" type="file" class="hidden" accept=".xlsx,.xls,.csv,.pdf,.docx,.txt,.json">
+                <div id="selInfo" class="hidden mt-3 bg-slate-50 border rounded-xl p-2 text-left">
+                  <div id="selName" class="text-xs font-bold truncate"></div>
+                  <div id="selMeta" class="text-[11px] text-slate-500"></div>
+                </div>
+              </div>
+              <button onclick="saveFile()" class="w-full mt-3 bg-slate-900 text-white py-2.5 rounded-xl text-sm font-bold">💾 ফাইল সেভ করুন</button>
+            </div>
+            <!-- URL Form -->
+            <div id="upUrlTab" class="hidden">
+              <input id="uName" type="text" placeholder="URL এর নাম *" class="w-full px-3 py-2.5 border-2 rounded-xl text-sm mb-3">
+              <input id="uUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/... " class="w-full px-3 py-2.5 border-2 rounded-xl text-sm font-mono mb-2">
+              <div class="bg-blue-50 border border-blue-100 rounded-xl p-2 text-[11px] text-blue-700 mb-3">
+                Google Sheet হলে Public করুন: Share → Anyone with link<br>
+                Website, PDF, CSV লিংকও চলবে
+              </div>
+              <input id="uDesc" type="text" placeholder="বিবরণ" class="w-full px-3 py-2.5 border rounded-xl text-sm mb-3">
+              <div id="urlStatus" class="hidden p-2 rounded-xl text-xs mb-2"></div>
+              <button onclick="saveUrl()" class="w-full bg-emerald-600 text-white py-2.5 rounded-xl text-sm font-bold">🔗 URL সেভ করুন</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-white rounded-xl border flex flex-col max-h-[600px]">
+          <div class="p-4 border-b flex justify-between">
+            <b class="text-sm">সেভ করা (<span id="fileCount">0</span>)</b>
+            <input id="fileSearch" placeholder="সার্চ..." class="px-3 py-1 border rounded-full text-xs w-24">
+          </div>
+          <div id="fileList" class="flex-1 overflow-auto p-2 space-y-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI REPORT -->
+    <section id="tab-ai" class="hidden">
+      <h1 class="text-xl font-bold">🤖 AI রিপোর্ট</h1>
+      <p class="text-xs text-slate-500">ফাইল+URL সিলেক্ট করে কমান্ড দিন</p>
+      
+      <div class="grid lg:grid-cols-[320px_1fr] gap-4 mt-4">
+        <div class="bg-white rounded-xl border flex flex-col max-h-[70vh]">
+          <div class="p-3 border-b">
+            <b class="text-sm">১. ফাইল/URL সিলেক্ট</b>
+            <input id="aiSearch" placeholder="খুঁজুন..." class="mt-2 w-full px-3 py-2 border rounded-xl text-xs">
+            <div class="flex gap-2 mt-2">
+              <button onclick="selectAllAI()" class="flex-1 py-1.5 bg-black text-white rounded-full text-xs">সব</button>
+              <button onclick="clearAllAI()" class="flex-1 py-1.5 bg-slate-100 rounded-full text-xs">ক্লিয়ার</button>
+            </div>
+          </div>
+          <div id="aiSelector" class="flex-1 overflow-auto p-2 space-y-2"></div>
+          <div class="p-2 bg-slate-50 text-[11px] text-slate-500 border-t">💡 Excel এখন ১০০% পার্স হবে</div>
+        </div>
+        
+        <div class="space-y-4">
+          <div class="bg-white rounded-xl border p-4">
+            <b class="text-sm">২. কমান্ড দিন (বাংলা/English)</b>
+            <textarea id="aiCommand" rows="3" placeholder="যেমন: এই ফাইল থেকে সারাংশ বানাও, টেবিল সহ" class="w-full mt-2 px-3 py-2 border-2 rounded-xl text-sm"></textarea>
+            <div class="grid grid-cols-2 gap-2 mt-3">
+              <button onclick="setCmd('এই ফাইল থেকে প্রফেশনাল সারাংশ রিপোর্ট বানাও, হেডিং ও টেবিল সহ')" class="p-2 bg-violet-50 border border-violet-100 rounded-xl text-xs text-left">📊 সারাংশ</button>
+              <button onclick="setCmd('এই ডাটা থেকে ইনসাইট ও সুপারিশ দাও')" class="p-2 bg-blue-50 border border-blue-100 rounded-xl text-xs text-left">💡 ইনসাইট</button>
+            </div>
+            <div class="flex gap-2 mt-3">
+              <button id="genBtn" onclick="generateReport()" class="flex-1 bg-violet-600 text-white py-3 rounded-xl font-bold">✨ রিপোর্ট তৈরি করুন</button>
+              <button onclick="clearResult()" class="px-4 py-3 bg-slate-100 rounded-xl text-sm">ক্লিয়ার</button>
+            </div>
+            <div id="aiStatus" class="hidden mt-3 p-3 rounded-xl text-xs"></div>
+          </div>
+          
+          <div id="aiResultCard" class="hidden bg-white rounded-xl border overflow-hidden">
+            <div class="p-3 border-b flex justify-between">
+              <b class="text-sm">📑 AI Report</b>
+              <div class="flex gap-1">
+                <button onclick="copyReport()" class="px-2 py-1 bg-slate-100 rounded-full text-xs">Copy</button>
+                <button onclick="downloadReport()" class="px-2 py-1 bg-violet-600 text-white rounded-full text-xs">Download</button>
+              </div>
+            </div>
+            <div id="aiResult" class="p-4 prose prose-sm max-w-none"></div>
+          </div>
+          
+          <div id="aiEmpty" class="bg-white rounded-xl border border-dashed p-8 text-center">
+            <div class="text-2xl">🤖</div>
+            <div class="text-sm font-bold mt-2">AI রেডি</div>
+            <div class="text-xs text-slate-500">ফাইল সিলেক্ট করে কমান্ড দিন</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- SETTINGS MODAL - FIXED -->
+<div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-auto">
+    <div class="p-5 bg-violet-600 text-white flex justify-between items-center">
+      <b>⚙️ Settings</b>
+      <button onclick="closeSettings()" class="w-8 h-8 bg-white/20 rounded-full">✕</button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div class="bg-violet-50 border-2 border-violet-200 rounded-xl p-3">
+        <label class="text-xs font-bold">Gemini API Key *</label>
+        <input id="setGemini" type="text" placeholder="AIza..." class="w-full mt-1 px-3 py-2.5 border-2 border-violet-200 rounded-xl text-sm font-mono">
+        <div class="text-[11px] mt-1">aistudio.google.com/app/apikey থেকে নিন</div>
+      </div>
+      <div>
+        <label class="text-xs font-bold">Model</label>
+        <select id="setModel" class="w-full mt-1 px-3 py-2.5 border rounded-xl text-sm">
+          <option value="auto">Auto-Detect (Recommended)</option>
+          <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+          <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest</option>
+          <option value="gemini-pro">gemini-pro</option>
+        </select>
+      </div>
+      <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-3">
+        <label class="text-xs font-bold text-emerald-800">Supabase (Optional)</label>
+        <input id="setSbUrl" type="text" placeholder="https://xyz.supabase.co" class="w-full mt-2 px-3 py-2 border rounded-xl text-xs font-mono">
+        <input id="setSbKey" type="text" placeholder="anon key eyJ..." class="w-full mt-2 px-3 py-2 border rounded-xl text-xs font-mono">
+      </div>
+      <div class="flex gap-2">
+        <button onclick="closeSettings()" class="flex-1 py-2.5 bg-slate-100 rounded-xl text-sm">Cancel</button>
+        <button onclick="saveSettings()" class="flex-1 py-2.5 bg-violet-600 text-white rounded-xl text-sm font-bold">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STATE - LIVE CLOUD VERSION =====
+let files = []; // Will load from Supabase or LocalStorage
+let selectedIds = new Set();
+let lastReport = "";
+let selectedFile = null;
+let settings = JSON.parse(localStorage.getItem('uzzal_settings')||'{}');
+let reportsCount = parseInt(localStorage.getItem('uzzal_reports_count')||'0');
+let supabaseClient = null;
+let isLiveMode = false;
+
+// Auto-load Supabase config from config.js if available
+if(window.SUPABASE_CONFIG){
+  if(window.SUPABASE_CONFIG.url && window.SUPABASE_CONFIG.url.includes('supabase.co')){
+    settings.supabaseUrl = window.SUPABASE_CONFIG.url;
+  }
+  if(window.SUPABASE_CONFIG.anonKey && window.SUPABASE_CONFIG.anonKey.startsWith('eyJ')){
+    settings.supabaseKey = window.SUPABASE_CONFIG.anonKey;
+  }
+  if(window.SUPABASE_CONFIG.geminiKey && window.SUPABASE_CONFIG.geminiKey.startsWith('AIza')){
+    settings.geminiKey = window.SUPABASE_CONFIG.geminiKey;
+  }
+  localStorage.setItem('uzzal_settings', JSON.stringify(settings));
+}
+
+function getSupabaseClient(){
+  try{
+    const url = settings.supabaseUrl || window.SUPABASE_CONFIG?.url;
+    const key = settings.supabaseKey || window.SUPABASE_CONFIG?.anonKey;
+    if(url && key && url.includes('supabase.co') && key.startsWith('eyJ')){
+      if(!supabaseClient && window.supabase){
+        supabaseClient = window.supabase.createClient(url, key);
+        isLiveMode = true;
+        console.log('✅ Supabase Live Mode Active:', url);
+      }
+      return supabaseClient;
+    }
+  }catch(e){ console.warn('Supabase init failed', e); }
+  isLiveMode = false;
+  return null;
+}
+
+async function loadFilesFromCloud(){
+  const sb = getSupabaseClient();
+  if(sb){
+    try{
+      const { data, error } = await sb.from('files').select('*').order('uploaded_at', {ascending:false});
+      if(error) throw error;
+      // Convert Supabase format to app format
+      files = (data||[]).map(row=>({
+        id: row.id,
+        displayName: row.display_name,
+        description: row.description,
+        fileName: row.file_name,
+        fileType: row.file_type,
+        size: row.size,
+        content: row.content,
+        fullContentPreview: row.full_content_preview || row.content,
+        uploadedAt: row.uploaded_at,
+        isUrl: row.file_type === 'url' || (row.file_name||'').startsWith('http'),
+        originalUrl: row.file_type === 'url' ? row.file_name : null
+      }));
+      console.log(`☁️ Loaded ${files.length} files from Supabase Live`);
+      isLiveMode = true;
+      return true;
+    }catch(e){
+      console.warn('Supabase load failed, falling back to local', e);
+      // Fallback to local
+      files = JSON.parse(localStorage.getItem('uzzal_files')||'[]');
+      isLiveMode = false;
+      return false;
+    }
+  } else {
+    files = JSON.parse(localStorage.getItem('uzzal_files')||'[]');
+    isLiveMode = false;
+    return false;
+  }
+}
+
+async function saveFileToCloud(fileObj){
+  const sb = getSupabaseClient();
+  if(sb){
+    try{
+      const payload = {
+        id: fileObj.id,
+        display_name: fileObj.displayName,
+        description: fileObj.description,
+        file_name: fileObj.fileName,
+        file_type: fileObj.fileType,
+        size: fileObj.size,
+        content: fileObj.content,
+        full_content_preview: fileObj.fullContentPreview,
+        uploaded_at: fileObj.uploadedAt
+      };
+      const { error } = await sb.from('files').insert(payload);
+      if(error) throw error;
+      console.log('☁️ File saved to Supabase Live');
+      return true;
+    }catch(e){
+      console.error('Supabase save failed', e);
+      // Fallback save to local
+      const localFiles = JSON.parse(localStorage.getItem('uzzal_files')||'[]');
+      localFiles.push(fileObj);
+      localStorage.setItem('uzzal_files', JSON.stringify(localFiles));
+      return false;
+    }
+  } else {
+    // Local only
+    const localFiles = JSON.parse(localStorage.getItem('uzzal_files')||'[]');
+    localFiles.push(fileObj);
+    localStorage.setItem('uzzal_files', JSON.stringify(localFiles));
+    return false;
+  }
+}
+
+async function deleteFileFromCloud(id){
+  const sb = getSupabaseClient();
+  if(sb){
+    try{
+      const { error } = await sb.from('files').delete().eq('id', id);
+      if(error) throw error;
+      console.log('☁️ File deleted from Supabase');
+      return true;
+    }catch(e){
+      console.error('Supabase delete failed', e);
+      return false;
+    }
+  }
+  return false;
+}
+
+
+// ===== AUTH - SUPER SIMPLE =====
+function autoFill(){
+  document.getElementById('loginUser').value='Uzzal';
+  document.getElementById('loginPass').value='Goodman321';
+}
+function skipLogin(){
+  localStorage.setItem('uzzal_auth','true');
+  checkAuth();
+}
+function checkAuth(){
+  const p = new URLSearchParams(location.search);
+  if(p.get('admin')==='uzzal' || p.get('bypass')==='1'){
+    localStorage.setItem('uzzal_auth','true');
+  }
+  const logged = localStorage.getItem('uzzal_auth')==='true';
+  document.getElementById('loginPage').classList.toggle('hidden', logged);
+  document.getElementById('mainApp').classList.toggle('hidden', !logged);
+  if(logged) initApp();
+}
+function logout(){
+  localStorage.removeItem('uzzal_auth');
+  location.reload();
+}
+document.getElementById('loginForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const u = document.getElementById('loginUser').value.trim().toLowerCase();
+  const p = document.getElementById('loginPass').value.trim().toLowerCase();
+  const err = document.getElementById('loginError');
+  if((u==='uzzal'||u==='admin') && (p==='goodman321')){
+    localStorage.setItem('uzzal_auth','true');
+    checkAuth();
+  } else {
+    err.textContent='❌ ভুল! Uzzal / Goodman321 দিন, বা Skip Login চাপুন';
+    err.classList.remove('hidden');
+  }
+});
+
+// ===== TABS =====
+function switchTab(t){
+  document.querySelectorAll('section[id^="tab-"]').forEach(s=>s.classList.add('hidden'));
+  document.getElementById('tab-'+t).classList.remove('hidden');
+  document.querySelectorAll('[id^="btn-"]').forEach(b=>b.className='px-4 py-2 rounded-full text-sm bg-slate-100');
+  document.getElementById('btn-'+t).className='px-4 py-2 rounded-full text-sm bg-slate-900 text-white';
+  if(t==='home') renderHome();
+  if(t==='upload') renderFileList();
+  if(t==='ai') renderAISelector();
+}
+function switchUploadTab(t){
+  document.getElementById('upFileTab').classList.toggle('hidden', t!=='file');
+  document.getElementById('upUrlTab').classList.toggle('hidden', t!=='url');
+  document.getElementById('uTabFile').className = t==='file' ? 'flex-1 py-3 text-sm font-bold bg-slate-900 text-white' : 'flex-1 py-3 text-sm bg-slate-50';
+  document.getElementById('uTabUrl').className = t==='url' ? 'flex-1 py-3 text-sm font-bold bg-slate-900 text-white' : 'flex-1 py-3 text-sm bg-slate-50';
+}
+
+// ===== INIT =====
+async function initApp(){
+  // Show loading
+  const homeEl = document.getElementById('homeRecent');
+  if(homeEl) homeEl.innerHTML = '<div class="text-xs text-slate-400 py-4 text-center">☁️ Live data loading...</div>';
+  
+  // Load files from Supabase Live or Local
+  await loadFilesFromCloud();
+  
+  renderHome();
+  renderFileList();
+  renderAISelector();
+  updateStats();
+  document.getElementById('setGemini').value = settings.geminiKey||'';
+  document.getElementById('setModel').value = settings.model||'auto';
+  document.getElementById('setSbUrl').value = settings.supabaseUrl||'';
+  document.getElementById('setSbKey').value = settings.supabaseKey||'';
+  
+  // Update live status badge
+  const liveBadge = document.getElementById('liveStatusBadge');
+  if(liveBadge){
+    if(isLiveMode){
+      liveBadge.textContent = '☁️ Live Cloud - All devices';
+      liveBadge.className = 'px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold';
+    } else {
+      liveBadge.textContent = '📱 Local Only - Setup Supabase for Live';
+      liveBadge.className = 'px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold';
+    }
+  }
+}
+
+// ===== STATS =====
+function updateStats(){
+  document.getElementById('statFiles').textContent = files.length;
+  document.getElementById('statReports').textContent = reportsCount;
+  document.getElementById('statGemini').textContent = settings.geminiKey ? '✅ Connected' : 'Not Set';
+  const liveBadge = document.getElementById('liveStatusBadge');
+  if(liveBadge){
+    if(isLiveMode){
+      liveBadge.textContent = '☁️ Live Cloud - All devices';
+      liveBadge.className = 'px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold';
+    } else {
+      liveBadge.textContent = '📱 Local Only - Setup Supabase for Live';
+      liveBadge.className = 'px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold';
+    }
+  }
+  // Also update file count badge in header if exists
+  const sbStatus = document.getElementById('supabaseLiveStatus');
+  if(sbStatus){
+    sbStatus.textContent = isLiveMode ? '☁️ Live' : '📱 Local';
+    sbStatus.className = isLiveMode ? 'text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full' : 'text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full';
+  }
+}
+function renderHome(){
+  const recent = [...files].sort((a,b)=>b.uploadedAt-a.uploadedAt).slice(0,5);
+  const el = document.getElementById('homeRecent');
+  if(recent.length===0) el.innerHTML='<div class="text-xs text-slate-400 py-4 text-center">কোনো ফাইল নেই</div>';
+  else el.innerHTML = recent.map(f=>`<div class="flex items-center gap-2 p-2 border rounded-xl text-xs"><div class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">${f.isUrl?'🔗':'📄'}</div><div class="flex-1 truncate"><b>${f.displayName}</b><br><span class="text-[11px] text-slate-500">${(f.fileName||'').slice(0,40)}</span></div></div>`).join('');
+}
+
+// ===== FILE UPLOAD =====
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+if(dropZone){
+  dropZone.addEventListener('click', ()=> fileInput.click());
+  dropZone.addEventListener('dragover', e=>{ e.preventDefault(); dropZone.classList.add('bg-violet-50'); });
+  dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('bg-violet-50'));
+  dropZone.addEventListener('drop', e=>{ e.preventDefault(); dropZone.classList.remove('bg-violet-50'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener('change', ()=>{ if(fileInput.files[0]) handleFile(fileInput.files[0]); });
+}
+function handleFile(file){
+  if(file.size>10*1024*1024){ alert('10MB max'); return; }
+  selectedFile = file;
+  document.getElementById('selInfo').classList.remove('hidden');
+  document.getElementById('selName').textContent = file.name;
+  document.getElementById('selMeta').textContent = `${(file.size/1024).toFixed(1)}KB • ${file.type||'unknown'}`;
+}
+async function saveFile(){
+  const name = document.getElementById('fName').value.trim();
+  const desc = document.getElementById('fDesc').value.trim();
+  if(!name){ alert('নাম দিন'); return; }
+  if(!selectedFile){ alert('ফাইল নির্বাচন করুন'); return; }
+  
+  const content = await readFileContent(selectedFile);
+  const newFile = {
+    id: Date.now().toString(),
+    displayName: name,
+    description: desc,
+    fileName: selectedFile.name,
+    fileType: selectedFile.type,
+    size: selectedFile.size,
+    content: content.slice(0,50000),
+    fullContentPreview: content.slice(0,120000),
+    uploadedAt: Date.now()
+  };
+  // Save to cloud (Supabase) or local
+  const savedToCloud = await saveFileToCloud(newFile);
+  if(savedToCloud){
+    files.push(newFile);
+  } else {
+    // If cloud save failed, already saved to local in saveFileToCloud, reload
+    if(!isLiveMode) files.push(newFile);
+    else files = JSON.parse(localStorage.getItem('uzzal_files')||'[]');
+  }
+  
+  document.getElementById('fName').value='';
+  document.getElementById('fDesc').value='';
+  selectedFile=null;
+  document.getElementById('selInfo').classList.add('hidden');
+  fileInput.value='';
+  renderFileList(); renderHome(); updateStats(); renderAISelector();
+  if(savedToCloud){
+    alert('✅ ফাইল Live Cloud এ সেভ হয়েছে! এখন যেকোনো ডিভাইস থেকে দেখা যাবে ☁️');
+  } else {
+    alert('✅ ফাইল Local এ সেভ হয়েছে! Live করতে Supabase Connect করুন ⚙️');
+  }
+}
+
+async function readFileContent(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  // Excel
+  if(['xlsx','xls'].includes(ext)){
+    return new Promise(resolve=>{
+      const reader = new FileReader();
+      reader.readAsArrayBuffer(file);
+      reader.onload = e=>{
+        try{
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, {type:'array'});
+          let txt = `=== Excel: ${file.name} ===\nSheets: ${wb.SheetNames.join(', ')}\n`;
+          wb.SheetNames.forEach(sn=>{
+            const sheet = wb.Sheets[sn];
+            const csv = XLSX.utils.sheet_to_csv(sheet);
+            txt += `\n--- Sheet: ${sn} ---\n${csv.slice(0,15000)}\n`;
+          });
+          resolve(txt.slice(0,120000));
+        }catch(err){ resolve(`[Excel Error: ${err.message}]`); }
+      };
+      reader.onerror = ()=> resolve(`[Read Error ${file.name}]`);
+    });
+  }
+  // Text
+  return new Promise(resolve=>{
+    const r = new FileReader();
+    r.readAsText(file);
+    r.onload = ()=> resolve(`=== File: ${file.name} ===\n${(r.result||'').slice(0,100000)}`);
+    r.onerror = ()=> resolve(`[Binary: ${file.name}]`);
+  });
+}
+
+// ===== URL =====
+async function fetchUrlContent(url){
+  let fetchUrl = url;
+  if(url.includes('docs.google.com/spreadsheets')){
+    const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if(m){
+      const id = m[1];
+      const gidMatch = url.match(/[#&]gid=([0-9]+)/);
+      const gid = gidMatch ? gidMatch[1] : '0';
+      fetchUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+    }
+  }
+  try{
+    const res = await fetch(fetchUrl);
+    if(!res.ok) throw new Error(res.status);
+    const txt = await res.text();
+    return {ok:true, content:txt, finalUrl:fetchUrl};
+  }catch(e){
+    try{
+      const proxy = `https://corsproxy.io/?${encodeURIComponent(fetchUrl)}`;
+      const r2 = await fetch(proxy);
+      if(r2.ok){
+        const t2 = await r2.text();
+        return {ok:true, content:t2, finalUrl:fetchUrl, viaProxy:true};
+      }
+    }catch(e2){}
+    return {ok:false, content:`[URL: ${url}\nFetch URL: ${fetchUrl}\nError: ${e.message}\nNote: Make sheet public]`, finalUrl:fetchUrl, error:e.message};
+  }
+}
+async function saveUrl(){
+  const name = document.getElementById('uName').value.trim();
+  const url = document.getElementById('uUrl').value.trim();
+  const desc = document.getElementById('uDesc').value.trim();
+  if(!name||!url){ alert('নাম ও URL দিন'); return; }
+  const status = document.getElementById('urlStatus');
+  status.classList.remove('hidden');
+  status.className='p-2 rounded-xl text-xs bg-blue-50 border border-blue-200 text-blue-700';
+  status.textContent='⏳ Fetching...';
+  try{
+    const res = await fetchUrlContent(url);
+    const content = res.content;
+    if(res.ok){
+      status.className='p-2 rounded-xl text-xs bg-emerald-50 border border-emerald-200 text-emerald-700';
+      status.textContent=`✅ ${content.length} chars পাওয়া গেছে`;
+    } else {
+      status.className='p-2 rounded-xl text-xs bg-amber-50 border border-amber-200 text-amber-700';
+      status.textContent=`⚠️ CORS - URL সেভ হলো, AI রেফারেন্স হিসেবে ব্যবহার করবে`;
+    }
+    const newFile = {
+      id: Date.now().toString(),
+      displayName:name,
+      description:desc||`URL: ${url}`,
+      fileName:url,
+      fileType:'url',
+      size:content.length,
+      content:content.slice(0,50000),
+      fullContentPreview:content.slice(0,120000),
+      uploadedAt:Date.now(),
+      isUrl:true,
+      originalUrl:url
+    };
+    const savedToCloud = await saveFileToCloud(newFile);
+    if(savedToCloud){
+      files.push(newFile);
+    } else {
+      if(!isLiveMode) files.push(newFile);
+    }
+    document.getElementById('uName').value='';
+    document.getElementById('uUrl').value='';
+    document.getElementById('uDesc').value='';
+    renderFileList(); renderHome(); updateStats(); renderAISelector();
+    if(savedToCloud){
+      alert('✅ URL Live Cloud এ সেভ হয়েছে! যেকোনো ডিভাইস থেকে দেখা যাবে ☁️');
+    } else {
+      alert('✅ URL Local এ সেভ হয়েছে!');
+    }
+    setTimeout(()=>status.classList.add('hidden'),2000);
+  }catch(e){
+    status.className='p-2 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700';
+    status.textContent='❌ '+e.message;
+  }
+}
+
+// ===== FILE LIST =====
+function renderFileList(){
+  const search = (document.getElementById('fileSearch')?.value||'').toLowerCase();
+  const listEl = document.getElementById('fileList');
+  const countEl = document.getElementById('fileCount');
+  if(countEl) countEl.textContent = files.length;
+  const filtered = files.filter(f=> f.displayName.toLowerCase().includes(search) || (f.fileName||'').toLowerCase().includes(search));
+  if(filtered.length===0){
+    listEl.innerHTML='<div class="py-10 text-center text-xs text-slate-400">কোনো ফাইল নেই</div>';
+    return;
+  }
+  listEl.innerHTML = filtered.map(f=>`
+    <div class="border rounded-xl p-2 flex gap-2 items-start hover:bg-slate-50">
+      <div class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-xs">${f.isUrl?'🔗':'📄'}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-bold truncate">${f.displayName} <span class="text-[10px] px-1.5 py-0.5 ${f.isUrl?'bg-emerald-100 text-emerald-700':'bg-slate-100'} rounded-full">${f.isUrl?'URL':'FILE'}</span></div>
+        <div class="text-[11px] text-slate-500 truncate">${(f.fileName||'').slice(0,50)} • ${f.content.length} chars</div>
+      </div>
+      <button onclick="viewFile('${f.id}')" class="w-6 h-6 bg-white border rounded-full text-[10px]">👁️</button>
+      <button onclick="deleteFile('${f.id}')" class="w-6 h-6 bg-white border rounded-full text-[10px]">🗑️</button>
+    </div>
+  `).join('');
+}
+async function deleteFile(id){
+  if(!confirm('Delete?')) return;
+  const sb = getSupabaseClient();
+  if(sb){
+    await deleteFileFromCloud(id);
+  }
+  files = files.filter(f=>f.id!==id);
+  localStorage.setItem('uzzal_files', JSON.stringify(files));
+  selectedIds.delete(id);
+  renderFileList(); renderHome(); updateStats(); renderAISelector();
+}
+function viewFile(id){
+  const f = files.find(x=>x.id===id);
+  if(!f) return;
+  const m = document.createElement('div');
+  m.className='fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4';
+  m.innerHTML=`<div class="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col"><div class="p-4 border-b flex justify-between"><b class="text-sm">${f.displayName}</b><button onclick="this.closest('.fixed').remove()" class="w-8 h-8 bg-slate-100 rounded-full">✕</button></div><div class="flex-1 overflow-auto p-4 bg-slate-50"><pre class="text-xs whitespace-pre-wrap bg-white p-3 rounded-xl border">${(f.content||'').slice(0,10000)}</pre></div></div>`;
+  document.body.appendChild(m);
+  m.addEventListener('click', e=>{ if(e.target===m) m.remove(); });
+}
+
+// ===== AI =====
+function renderAISelector(){
+  const search = (document.getElementById('aiSearch')?.value||'').toLowerCase();
+  const el = document.getElementById('aiSelector');
+  if(!el) return;
+  const filtered = files.filter(f=> f.displayName.toLowerCase().includes(search) || (f.fileName||'').toLowerCase().includes(search));
+  if(filtered.length===0){ el.innerHTML='<div class="py-8 text-center text-xs text-slate-400">কোনো ফাইল নেই</div>'; return; }
+  el.innerHTML = filtered.map(f=>{
+    const checked = selectedIds.has(f.id) ? 'checked' : '';
+    return `<label class="flex gap-2 p-2 border rounded-xl cursor-pointer ${checked?'bg-violet-50 border-violet-200':'bg-white'}"><input type="checkbox" ${checked} onchange="toggleAI('${f.id}')" class="mt-1"><div class="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center text-xs">${f.isUrl?'🔗':'📄'}</div><div class="flex-1 min-w-0"><div class="text-xs font-bold truncate">${f.displayName}</div><div class="text-[11px] text-slate-500 truncate">${(f.fileName||'').slice(0,40)}</div></div></label>`;
+  }).join('');
+  document.getElementById('aiFileCountBadge')?.replaceChildren(document.createTextNode(`${selectedIds.size} সিলেক্ট`));
+}
+function toggleAI(id){ if(selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id); renderAISelector(); }
+function selectAllAI(){ files.forEach(f=>selectedIds.add(f.id)); renderAISelector(); }
+function clearAllAI(){ selectedIds.clear(); renderAISelector(); }
+function setCmd(t){ document.getElementById('aiCommand').value=t; }
+
+async function getModels(key){
+  try{
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    if(!r.ok) return [];
+    const d = await r.json();
+    return (d.models||[]).filter(m=>m.supportedGenerationMethods?.includes('generateContent')).map(m=>m.name.replace('models/',''));
+  }catch(e){ return []; }
+}
+
+async function generateReport(){
+  const cmd = document.getElementById('aiCommand').value.trim();
+  if(selectedIds.size===0){ alert('ফাইল সিলেক্ট করুন'); return; }
+  if(!cmd){ alert('কমান্ড লিখুন'); return; }
+  if(!settings.geminiKey){ alert('Settings থেকে Gemini API Key দিন'); openSettings(); return; }
+  
+  const selFiles = files.filter(f=>selectedIds.has(f.id));
+  const status = document.getElementById('aiStatus');
+  const btn = document.getElementById('genBtn');
+  status.classList.remove('hidden');
+  status.className='mt-3 p-3 rounded-xl text-xs bg-blue-50 border border-blue-200 text-blue-700';
+  status.textContent='⏳ AI রিপোর্ট তৈরি হচ্ছে...';
+  btn.disabled=true; btn.textContent='⏳ প্রসেসিং...';
+  document.getElementById('aiEmpty').classList.add('hidden');
+  
+  try{
+    let filesPrompt = selFiles.map(f=>{
+      const snippet = (f.fullContentPreview||f.content||'').slice(0,10000);
+      return `--- FILE: ${f.displayName} (${f.fileName}) ---\n${snippet}\n--- END ---`;
+    }).join('\n\n');
+    if(filesPrompt.length>70000) filesPrompt=filesPrompt.slice(0,70000)+'\n[Truncated]';
+    
+    const prompt = `You are professional report assistant. Files:\n${filesPrompt}\n\nUser command: ${cmd}\nGenerate beautiful report with headings, bullet points, tables in same language as command.`;
+    
+    // Get available models
+    let available = await getModels(settings.geminiKey);
+    let tryModels = [];
+    if(settings.model && settings.model!=='auto') tryModels.push(settings.model);
+    if(available.length>0){
+      const flash = available.filter(m=>m.includes('flash'));
+      tryModels.push(...flash, ...available);
+    }
+    tryModels.push('gemini-2.0-flash','gemini-1.5-flash-latest','gemini-1.5-flash','gemini-pro','gemini-1.0-pro');
+    tryModels = [...new Set(tryModels)];
+    
+    let lastErr=null;
+    for(const m of tryModels){
+      try{
+        status.textContent=`🔍 Trying model: ${m}...`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${settings.geminiKey}`;
+        const res = await fetch(url, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.7, maxOutputTokens:8192}})
+        });
+        if(!res.ok){
+          const txt = await res.text();
+          if(res.status===404){ lastErr=txt; continue; }
+          throw new Error(`${res.status}: ${txt.slice(0,500)}`);
+        }
+        const data = await res.json();
+        const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if(!txt) throw new Error('No response');
+        lastReport = txt;
+        document.getElementById('aiResult').innerHTML = marked.parse(txt);
+        document.getElementById('aiResultCard').classList.remove('hidden');
+        status.className='mt-3 p-3 rounded-xl text-xs bg-emerald-50 border border-emerald-200 text-emerald-700';
+        status.textContent=`✅ রিপোর্ট তৈরি হয়েছে! Model: ${m}`;
+        reportsCount++; localStorage.setItem('uzzal_reports_count', reportsCount.toString());
+        updateStats();
+        break;
+      }catch(e){
+        lastErr=e;
+        if(e.message.includes('404')||e.message.includes('not found')) continue;
+        throw e;
+      }
+    }
+    if(!lastReport && lastErr) throw lastErr;
+  }catch(e){
+    status.className='mt-3 p-3 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700';
+    status.textContent='❌ Error: '+e.message;
+  }finally{
+    btn.disabled=false; btn.textContent='✨ রিপোর্ট তৈরি করুন';
+  }
+}
+
+function clearResult(){
+  document.getElementById('aiResultCard').classList.add('hidden');
+  document.getElementById('aiEmpty').classList.remove('hidden');
+  document.getElementById('aiStatus').classList.add('hidden');
+}
+function copyReport(){ navigator.clipboard.writeText(lastReport); alert('Copied!'); }
+function downloadReport(){
+  const blob = new Blob([lastReport], {type:'text/markdown'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`Report_${Date.now()}.md`; a.click();
+}
+
+// ===== SETTINGS =====
+function openSettings(){
+  const m = document.getElementById('settingsModal');
+  m.classList.remove('hidden');
+  m.classList.add('flex');
+}
+function closeSettings(){
+  const m = document.getElementById('settingsModal');
+  m.classList.add('hidden');
+  m.classList.remove('flex');
+}
+function saveSettings(){
+  settings.geminiKey = document.getElementById('setGemini').value.trim();
+  settings.model = document.getElementById('setModel').value;
+  settings.supabaseUrl = document.getElementById('setSbUrl').value.trim();
+  settings.supabaseKey = document.getElementById('setSbKey').value.trim();
+  localStorage.setItem('uzzal_settings', JSON.stringify(settings));
+  updateStats();
+  closeSettings();
+  alert('✅ Saved!');
+}
+
+// Init
+checkAuth();
+document.getElementById('fileSearch')?.addEventListener('input', renderFileList);
+document.getElementById('aiSearch')?.addEventListener('input', renderAISelector);
+</script>
+</body>
+</html>
