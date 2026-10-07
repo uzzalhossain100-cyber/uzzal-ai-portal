@@ -872,15 +872,36 @@ function clearAllAI(){ selectedIds.clear(); renderAISelector(); }
 function setCmd(t){ document.getElementById('aiCommand').value=t; }
 
 async function getModels(key){
-  // Support multiple keys - use first valid
+  // Support multiple keys - use first valid AIza key
   const keys = key.split(',').map(k=>k.trim()).filter(k=>k.startsWith('AIza'));
   const useKey = keys[0] || key;
+  if(!useKey.startsWith('AIza')){
+    console.warn('Invalid API key format, should start with AIza, got:', useKey.slice(0,10));
+    return [];
+  }
   try{
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${useKey}`);
-    if(!r.ok) return [];
+    if(!r.ok) {
+      const txt = await r.text();
+      console.warn('Models list failed:', txt.slice(0,300));
+      return [];
+    }
     const d = await r.json();
-    return (d.models||[]).filter(m=>m.supportedGenerationMethods?.includes('generateContent')).map(m=>m.name.replace('models/',''));
-  }catch(e){ return []; }
+    let models = (d.models||[]).filter(m=>m.supportedGenerationMethods?.includes('generateContent')).map(m=>m.name.replace('models/',''));
+    // EXCLUDE TTS, AUDIO, IMAGE, EMBEDDING models that don't support TEXT
+    models = models.filter(m=>{
+      const lower = m.toLowerCase();
+      if(lower.includes('tts')) return false;
+      if(lower.includes('preview-tts')) return false;
+      if(lower.includes('audio')) return false;
+      if(lower.includes('image')) return false;
+      if(lower.includes('embedding')) return false;
+      if(lower.includes('aqa')) return false;
+      return true;
+    });
+    console.log('Filtered models (excluding TTS):', models);
+    return models;
+  }catch(e){ console.warn('getModels error', e); return []; }
 }
 
 function getApiKeys(){
@@ -933,20 +954,46 @@ ${snippet}
     // Get available models
     let available = await getModels(settings.geminiKey);
     let tryModels = [];
-    // Prioritize models with higher free quota
-    const highQuotaModels = ['gemini-1.5-flash-latest','gemini-1.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-pro-latest','gemini-pro','gemini-1.0-pro'];
-    const lowQuotaModels = ['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash-exp'];
+    // ONLY TEXT models that support TEXT modality - EXCLUDE TTS
+    const highQuotaModels = [
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-002',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-001',
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-pro-latest',
+      'gemini-1.5-pro',
+      'gemini-1.5-pro-002',
+      'gemini-pro',
+      'gemini-1.0-pro'
+    ];
+    const lowQuotaModels = [
+      'gemini-2.5-flash',
+      'gemini-2.5-pro'
+    ];
+    // NEVER include TTS models
+    const bannedModels = ['tts','preview-tts','audio','image','embedding'];
     
-    if(settings.model && settings.model!=='auto') tryModels.push(settings.model);
-    // Try high quota models first
+    if(settings.model && settings.model!=='auto'){
+      const isBanned = bannedModels.some(b=>settings.model.toLowerCase().includes(b));
+      if(!isBanned) tryModels.push(settings.model);
+    }
+    // Try high quota TEXT models first
     tryModels.push(...highQuotaModels);
     if(available.length>0){
-      const flash = available.filter(m=>m.includes('flash') && !m.includes('2.5'));
+      const flash = available.filter(m=>{
+        const lower = m.toLowerCase();
+        if(bannedModels.some(b=>lower.includes(b))) return false;
+        return lower.includes('flash') || lower.includes('pro');
+      });
       tryModels.push(...flash);
     }
     tryModels.push(...lowQuotaModels);
-    tryModels.push('gemini-2.0-flash','gemini-1.5-flash-latest','gemini-1.5-flash','gemini-pro','gemini-1.0-pro');
-    tryModels = [...new Set(tryModels)];
+    tryModels = [...new Set(tryModels)].filter(m=>{
+      const lower = m.toLowerCase();
+      return !bannedModels.some(b=>lower.includes(b));
+    });
     
     const apiKeys = getApiKeys();
     console.log(`Trying ${tryModels.length} models with ${apiKeys.length} API keys`);
@@ -967,10 +1014,15 @@ ${snippet}
             if(!res.ok){
           const txt = await res.text();
           if(res.status===404){ lastErr=txt; continue; }
+          if(res.status===400 && txt.includes('response modalities')){
+            console.warn(`Model ${m} is TTS/Audio only, skipping...`);
+            lastErr = new Error(`Model ${m} is TTS only, not TEXT`);
+            status.textContent = `⚠️ ${m} Audio মডেল, TEXT সাপোর্ট করে না, অন্য মডেল Try...`;
+            continue;
+          }
           if(res.status===429){
             console.warn(`Model ${m} quota exceeded (429), trying next model...`);
             lastErr = new Error(`429 Quota exceeded for ${m}`);
-            // Try next model that might have quota
             status.textContent = `⚠️ ${m} এর Quota শেষ (20/day), অন্য মডেল Try করা হচ্ছে...`;
             continue;
           }
@@ -1003,15 +1055,31 @@ ${snippet}
 ❌ Free Quota শেষ! (দিনে 20 টা রিপোর্ট)
 
 🔧 সমাধান:
-1. 14 ঘণ্টা পর আবার Try করুন (Error এ 13h58m বলেছে)
+1. 14 ঘণ্টা পর আবার Try করুন
 2. নতুন API Key বানান: aistudio.google.com/app/apikey → নতুন Google Account দিয়ে
 3. Settings → Model → gemini-1.5-flash-latest সিলেক্ট করুন (দিনে 1500 টা ফ্রি)
-4. Billing Enable করুন: console.cloud.google.com → Billing → Enable (তাহলে Unlimited)
+4. Billing Enable করুন: console.cloud.google.com → Billing
 
 বর্তমান Error: ${msg.slice(0,600)}
 `;
+    } else if(msg.includes('401') || msg.includes('UNAUTHENTICATED') || msg.includes('invalid authentication') || msg.includes('ACCESS_TOKEN')){
+      friendlyMsg = `
+❌ API Key Invalid! (401 Error)
+
+🔧 সমাধান:
+1. API Key ভুল বা Expire হয়ে গেছে
+2. নতুন Key বানান: https://aistudio.google.com/app/apikey
+   → Create API Key → Copy → Settings এ Paste → Save
+3. Key টি AIza... দিয়ে শুরু হতে হবে, পুরোটা কপি করুন
+4. Google Cloud এ API Enable করুন:
+   https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com → Enable
+
+বর্তমান Error: ${msg.slice(0,800)}
+
+💡 টিপস: একাধিক Key থাকলে কমা দিয়ে দিন: Key1, Key2
+`;
     } else {
-      friendlyMsg = '❌ Error: ' + msg;
+      friendlyMsg = '❌ Error: ' + msg.slice(0,1000);
     }
     status.className='mt-3 p-3 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700 whitespace-pre-wrap';
     status.textContent=friendlyMsg;
@@ -1043,15 +1111,79 @@ function closeSettings(){
   m.classList.add('hidden');
   m.classList.remove('flex');
 }
-function saveSettings(){
-  settings.geminiKey = document.getElementById('setGemini').value.trim();
-  settings.model = document.getElementById('setModel').value;
-  settings.supabaseUrl = document.getElementById('setSbUrl').value.trim();
-  settings.supabaseKey = document.getElementById('setSbKey').value.trim();
+async function validateGeminiKey(key){
+  const testKey = key.split(',')[0].trim();
+  if(testKey.startsWith('AQ.')){
+    return {valid:false, error:'❌ এই Key টা Gemini Key না! AQ. দিয়ে শুরু হওয়া Key টা Google Cloud এর অন্য সার্ভিসের। Gemini Key AIza... দিয়ে শুরু হতে হবে।\n\nসঠিক Key পেতে: https://aistudio.google.com/app/apikey → Create API Key'};
+  }
+  if(!testKey.startsWith('AIza')){
+    return {valid:false, error:`❌ Invalid Format! Key "${testKey.slice(0,20)}..." AIza... দিয়ে শুরু হতে হবে, AQ. দিয়ে না।\n\nসঠিক Key: https://aistudio.google.com/app/apikey`};
+  }
+  try{
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${testKey}`);
+    if(res.ok) return {valid:true};
+    const txt = await res.text();
+    if(txt.includes('API_KEY_INVALID') || txt.includes('401') || txt.includes('UNAUTHENTICATED')) return {valid:false, error:'API Key Invalid (401) - নতুন Key বানান'};
+    if(txt.includes('429')) return {valid:true, warning:'Quota শেষ কিন্তু Key Valid - অন্য মডেল Try করুন'};
+    return {valid:false, error: txt.slice(0,300)};
+  }catch(e){
+    return {valid:false, error:e.message};
+  }
+}
+
+async function saveSettings(){
+  const geminiRaw = document.getElementById('setGemini').value.trim();
+  const model = document.getElementById('setModel').value;
+  const sbUrl = document.getElementById('setSbUrl').value.trim();
+  const sbKey = document.getElementById('setSbKey').value.trim();
+  
+  // Validate Gemini Key if provided
+  if(geminiRaw){
+    const statusEl = document.getElementById('urlStatus') || document.createElement('div');
+    // Quick validation
+    const keys = geminiRaw.split(',').map(k=>k.trim()).filter(k=>k);
+    for(const k of keys){
+      if(!k.startsWith('AIza')){
+        alert(`❌ API Key ভুল! "${k.slice(0,20)}..." AIza... দিয়ে শুরু হতে হবে`);
+        return;
+      }
+    }
+  }
+  
+  settings.geminiKey = geminiRaw;
+  settings.model = model;
+  settings.supabaseUrl = sbUrl;
+  settings.supabaseKey = sbKey;
   localStorage.setItem('uzzal_settings', JSON.stringify(settings));
+  
+  // Also update config.js in memory
+  if(window.SUPABASE_CONFIG){
+    window.SUPABASE_CONFIG.url = sbUrl || window.SUPABASE_CONFIG.url;
+    window.SUPABASE_CONFIG.anonKey = sbKey || window.SUPABASE_CONFIG.anonKey;
+  }
+  
   updateStats();
   closeSettings();
-  alert('✅ Saved!');
+  
+  // Test Gemini key if provided
+  if(geminiRaw){
+    const testRes = await validateGeminiKey(geminiRaw);
+    if(testRes.valid){
+      alert('✅ Saved! Gemini Key Valid ✅' + (testRes.warning ? '\n⚠️ '+testRes.warning : ''));
+    } else {
+      alert('⚠️ Saved কিন্তু Key Invalid!\n' + testRes.error + '\n\nনতুন Key বানান: aistudio.google.com/app/apikey');
+    }
+  } else {
+    alert('✅ Saved!');
+  }
+  
+  // Reload files if Supabase changed
+  if(sbUrl && sbKey){
+    await loadFilesFromCloud();
+    renderFileList();
+    renderHome();
+    renderAISelector();
+  }
 }
 
 // Init
