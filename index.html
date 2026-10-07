@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 tailwind.config = {
   theme: {
@@ -349,56 +351,77 @@ tailwind.config = {
   </main>
 </div>
 
-<!-- SETTINGS MODAL -->
-<div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-    <div class="p-6 border-b border-slate-100 flex items-center justify-between">
-      <h3 class="font-bold text-lg">⚙️ সেটিংস ও API কনফিগারেশন</h3>
-      <button onclick="closeSettings()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200">✕</button>
+<!-- SETTINGS MODAL - UPDATED WITH BIGGER SUPABASE SECTION -->
+<div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-violet-600 to-indigo-600 text-white">
+      <h3 class="font-bold text-lg">⚙️ সেটিংস - এখানেই Supabase ও Gemini Key বসাবেন</h3>
+      <button onclick="closeSettings()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30">✕</button>
     </div>
-    <div class="p-6 space-y-5 max-h-[70vh] overflow-auto">
-      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
-        <b>🔑 Gemini API Key কীভাবে পাবেন?</b><br/>
-        1. <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline font-semibold">aistudio.google.com</a> এ যান<br/>
-        2. Create API Key ক্লিক করুন<br/>
-        3. কপি করে এখানে পেস্ট করুন<br/>
-        ফ্রি কোটা: প্রতি মিনিটে 60 রিকোয়েস্ট
-      </div>
-      <div>
-        <label class="block text-sm font-medium mb-1.5">Gemini API Key *</label>
-        <input id="settingGeminiKey" type="password" placeholder="AIza..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 outline-none text-sm">
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-sm font-medium mb-1.5">Gemini Model</label>
-          <select id="settingModel" class="w-full px-3 py-3 rounded-xl border border-slate-200 text-sm">
-            <option value="gemini-1.5-flash">gemini-1.5-flash (Fast)</option>
-            <option value="gemini-1.5-pro">gemini-1.5-pro (Smart)</option>
-            <option value="gemini-2.0-flash-exp">gemini-2.0-flash-exp (Latest)</option>
-          </select>
+    <div class="p-6 space-y-5 max-h-[75vh] overflow-auto">
+      
+      <!-- STEP 1 GEMINI -->
+      <div class="bg-gradient-to-br from-violet-50 to-indigo-50 border-2 border-violet-200 rounded-2xl p-4">
+        <h4 class="font-bold text-sm text-violet-800 flex items-center gap-2">🔑 STEP 1: Gemini API Key (AI এর জন্য - আবশ্যক)</h4>
+        <div class="mt-3">
+          <label class="block text-xs font-semibold mb-1.5 text-slate-700">Gemini API Key পেস্ট করুন *</label>
+          <input id="settingGeminiKey" type="text" placeholder="AIzaSy... (aistudio.google.com থেকে)" class="w-full px-4 py-3 rounded-xl border-2 border-violet-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-100 outline-none text-sm font-mono">
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-1.5">ভাষা</label>
-          <select id="settingLang" class="w-full px-3 py-3 rounded-xl border border-slate-200 text-sm">
-            <option value="auto">Auto (Command অনুযায়ী)</option>
-            <option value="bn">বাংলা</option>
-            <option value="en">English</option>
-          </select>
+        <div class="mt-2 bg-white border border-violet-100 rounded-xl p-2.5 text-[11px] text-slate-600">
+          <b>কিভাবে পাবেন?</b> <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-violet-600 underline font-bold">aistudio.google.com/app/apikey</a> → Create API Key → Copy → এখানে Paste
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium mb-1">Model</label>
+            <select id="settingModel" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm">
+              <option value="gemini-2.0-flash">gemini-2.0-flash (Recommended ✅)</option>
+              <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (Fastest)</option>
+              <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest (Stable)</option>
+              <option value="gemini-1.5-pro-latest">gemini-1.5-pro-latest (Smartest)</option>
+              <option value="gemini-2.0-flash-exp">gemini-2.0-flash-exp (Experimental)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium mb-1">ভাষা</label>
+            <select id="settingLang" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm">
+              <option value="auto">Auto</option>
+              <option value="bn">বাংলা</option>
+              <option value="en">English</option>
+            </select>
+          </div>
         </div>
       </div>
-      <hr class="border-slate-100">
-      <h4 class="font-semibold text-sm">Supabase (ঐচ্ছিক - Live Deployment এর জন্য)</h4>
-      <div>
-        <label class="block text-xs font-medium mb-1">Supabase URL</label>
-        <input id="settingSupabaseUrl" type="text" placeholder="https://xyz.supabase.co" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none">
+
+      <!-- STEP 2 SUPABASE - HIGHLIGHTED -->
+      <div class="bg-gradient-to-br from-emerald-50 to-blue-50 border-2 border-emerald-300 rounded-2xl p-4 shadow-sm">
+        <h4 class="font-bold text-sm text-emerald-800 flex items-center gap-2">☁️ STEP 2: Supabase URL & Anon Key (Cloud এর জন্য - আপনি এখানে আটকেছেন)</h4>
+        <p class="text-[11px] text-emerald-700 mt-1">এই ২টা ঘরেই আপনার Supabase URL ও Key বসাবেন। Vercel Dashboard এ না, এই Popup এর ভিতরেই!</p>
+        
+        <div class="mt-4 space-y-3">
+          <div class="bg-white rounded-xl p-3 border-2 border-emerald-200">
+            <label class="block text-xs font-bold mb-1.5 text-emerald-800">🔗 Supabase Project URL *</label>
+            <input id="settingSupabaseUrl" type="text" placeholder="https://abcdefghijk.supabase.co" class="w-full px-4 py-3 rounded-xl border-2 border-emerald-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 outline-none text-sm font-mono">
+            <div class="text-[10px] text-slate-500 mt-1">Supabase → Project Settings → API → Project URL → Copy</div>
+          </div>
+          
+          <div class="bg-white rounded-xl p-3 border-2 border-blue-200">
+            <label class="block text-xs font-bold mb-1.5 text-blue-800">🔑 Supabase Anon Public Key * (eyJ... দিয়ে শুরু)</label>
+            <textarea id="settingSupabaseKey" rows="3" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6..." class="w-full px-4 py-3 rounded-xl border-2 border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none text-xs font-mono resize-none"></textarea>
+            <div class="text-[10px] text-slate-500 mt-1">Supabase → Project Settings → API → anon public → Reveal → Copy → এখানে Paste (পুরোটা)</div>
+          </div>
+        </div>
+
+        <div class="mt-3 flex gap-2">
+          <button onclick="testSupabaseConnection()" class="flex-1 py-2 bg-white border-2 border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 hover:bg-emerald-50">🔍 Connection Test করুন</button>
+          <button onclick="window.open('https://supabase.com/dashboard','_blank')" class="flex-1 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700">Supabase Dashboard খুলুন</button>
+        </div>
+        <div id="supabaseTestResult" class="hidden mt-2 p-2 rounded-xl text-xs"></div>
+
+        <div class="mt-3 bg-white/70 rounded-xl p-3 text-[11px] text-slate-600 border border-emerald-100">
+          <b>💡 মনে রাখবেন:</b> এই ঘরগুলো Vercel এর Dashboard এ না, আপনার <b>Live ওয়েবসাইটের (uzzal-ai-portal.vercel.app) ভিতরে ⚙️ Settings Popup এ</b>। Vercel Dashboard এ খুঁজলে পাবেন না!
+        </div>
       </div>
-      <div>
-        <label class="block text-xs font-medium mb-1">Supabase Anon Key</label>
-        <input id="settingSupabaseKey" type="password" placeholder="eyJ..." class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none">
-      </div>
-      <div class="bg-slate-50 rounded-xl p-3 text-xs text-slate-600">
-        Supabase ব্যবহার করলে ফাইলগুলো ক্লাউডে সেভ হবে। না দিলে LocalStorage এ সেভ হবে (ডেমোর জন্য ঠিক আছে)।
-      </div>
+
     </div>
     <div class="p-4 border-t border-slate-100 bg-slate-50 flex gap-2 justify-end">
       <button onclick="closeSettings()" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm">বাতিল</button>
@@ -412,6 +435,19 @@ tailwind.config = {
 let files = JSON.parse(localStorage.getItem('uzzal_files') || '[]');
 let reportsCount = parseInt(localStorage.getItem('uzzal_reports_count') || '0');
 let settings = JSON.parse(localStorage.getItem('uzzal_settings') || '{}');
+// Auto-load from config.js if provided (for Vercel deployment without manual paste)
+if(window.SUPABASE_CONFIG){
+  if(window.SUPABASE_CONFIG.url && window.SUPABASE_CONFIG.url.includes('supabase.co')){
+    settings.supabaseUrl = window.SUPABASE_CONFIG.url;
+  }
+  if(window.SUPABASE_CONFIG.anonKey && window.SUPABASE_CONFIG.anonKey.startsWith('eyJ')){
+    settings.supabaseKey = window.SUPABASE_CONFIG.anonKey;
+  }
+  if(window.SUPABASE_CONFIG.geminiKey && window.SUPABASE_CONFIG.geminiKey.startsWith('AIza')){
+    settings.geminiKey = window.SUPABASE_CONFIG.geminiKey;
+  }
+  localStorage.setItem('uzzal_settings', JSON.stringify(settings));
+}
 let selectedAIIds = new Set();
 let lastGeneratedReport = "";
 let selectedFileObj = null;
@@ -469,7 +505,13 @@ function initApp(){
   updateStats();
   // load settings to inputs
   document.getElementById('settingGeminiKey').value = settings.geminiKey || '';
-  document.getElementById('settingModel').value = settings.model || 'gemini-1.5-flash';
+  document.getElementById('settingModel').value = settings.model || 'gemini-2.0-flash';
+  // Auto-fix old model names
+  if(settings.model === 'gemini-1.5-flash' || settings.model === 'gemini-1.5-pro'){
+    settings.model = 'gemini-2.0-flash';
+    localStorage.setItem('uzzal_settings', JSON.stringify(settings));
+    document.getElementById('settingModel').value = 'gemini-2.0-flash';
+  }
   document.getElementById('settingLang').value = settings.lang || 'auto';
   document.getElementById('settingSupabaseUrl').value = settings.supabaseUrl || '';
   document.getElementById('settingSupabaseKey').value = settings.supabaseKey || '';
@@ -775,7 +817,7 @@ ${(f.content||'').slice(0,500)}
 }
 
 async function callGeminiAPI(selectedFiles, command){
-  const model = settings.model || 'gemini-1.5-flash';
+  const model = settings.model || 'gemini-2.0-flash';
   const apiKey = settings.geminiKey;
   const langInstruction = settings.lang==='bn' ? 'উত্তর বাংলায় দাও' : settings.lang==='en' ? 'Answer in English' : 'Answer in the same language as the user command (Bengali if command is Bengali, English if English)';
   
@@ -807,24 +849,53 @@ ${command}
 
 Now generate the final report/answer:`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: systemPrompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-    })
-  });
+  // Try models in order with auto-fallback for 404 errors
+  const modelsToTry = [model, 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro-latest'];
+  const uniqueModels = [...new Set(modelsToTry)];
+  let lastError = null;
 
-  if(!res.ok){
-    const errText = await res.text();
-    throw new Error(`Gemini API Error ${res.status}: ${errText.slice(0,500)}`);
+  for(const tryModel of uniqueModels){
+    try{
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${tryModel}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: systemPrompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+        })
+      });
+
+      if(!res.ok){
+        const errText = await res.text();
+        // If 404 model not found, try next model
+        if(res.status===404 && errText.includes('is not found')){
+          console.warn(`Model ${tryModel} not found, trying next...`);
+          lastError = `Model ${tryModel} not found`;
+          continue;
+        }
+        throw new Error(`Gemini API Error ${res.status} (${tryModel}): ${errText.slice(0,800)}`);
+      }
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if(!text) throw new Error('Gemini থেকে কোনো রেসপন্স পাওয়া যায়নি');
+      // Save working model
+      if(tryModel !== model){
+        settings.model = tryModel;
+        localStorage.setItem('uzzal_settings', JSON.stringify(settings));
+        const modelSelect = document.getElementById('settingModel');
+        if(modelSelect) modelSelect.value = tryModel;
+      }
+      return text;
+    }catch(e){
+      lastError = e;
+      if(e.message && e.message.includes('is not found')){
+        continue;
+      }
+      throw e;
+    }
   }
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if(!text) throw new Error('Gemini থেকে কোনো রেসপন্স পাওয়া যায়নি');
-  return text;
+  throw lastError || new Error('সব মডেল Try করা হয়েছে, কিন্তু কাজ করেনি। API Key চেক করুন।');
 }
 
 function askFollowUp(){
@@ -862,6 +933,32 @@ function downloadReport(type){
 /* ================== SETTINGS ================== */
 function openSettings(){ document.getElementById('settingsModal').classList.remove('hidden'); }
 function closeSettings(){ document.getElementById('settingsModal').classList.add('hidden'); }
+async function testSupabaseConnection(){
+  const url = document.getElementById('settingSupabaseUrl').value.trim();
+  const key = document.getElementById('settingSupabaseKey').value.trim();
+  const resultEl = document.getElementById('supabaseTestResult');
+  resultEl.classList.remove('hidden');
+  if(!url || !key){ resultEl.className = "mt-2 p-2 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700"; resultEl.textContent = "❌ URL ও Key দুটোই দিন"; return; }
+  resultEl.className = "mt-2 p-2 rounded-xl text-xs bg-blue-50 border border-blue-200 text-blue-700";
+  resultEl.textContent = "⏳ টেস্ট করা হচ্ছে...";
+  try{
+    const { createClient } = window.supabase || {};
+    // Fallback fetch test
+    const res = await fetch(`${url}/rest/v1/files?select=id&limit=1`, { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } });
+    if(res.ok || res.status===404){ // 404 means table not exists but connection ok
+      resultEl.className = "mt-2 p-2 rounded-xl text-xs bg-emerald-50 border border-emerald-200 text-emerald-700";
+      resultEl.textContent = `✅ Connection সফল! Status: ${res.status} - এখন Save করুন।`;
+    } else {
+      const txt = await res.text();
+      resultEl.className = "mt-2 p-2 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700";
+      resultEl.textContent = `❌ Error ${res.status}: ${txt.slice(0,200)} - Key ঠিক আছে কিনা চেক করুন`;
+    }
+  }catch(e){
+    resultEl.className = "mt-2 p-2 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700";
+    resultEl.textContent = "❌ Error: "+e.message+" - URL ঠিক আছে কিনা দেখুন";
+  }
+}
+
 function saveSettings(){
   settings.geminiKey = document.getElementById('settingGeminiKey').value.trim();
   settings.model = document.getElementById('settingModel').value;
@@ -871,7 +968,11 @@ function saveSettings(){
   localStorage.setItem('uzzal_settings', JSON.stringify(settings));
   updateStats();
   closeSettings();
-  alert('✅ সেটিংস সেভ হয়েছে!');
+  if(settings.supabaseUrl && settings.supabaseKey){
+    alert('✅ সেটিংস সেভ হয়েছে! Supabase Connected ☁️\n\nএখন ফাইল আপলোড করলে Cloud এ যাবে।');
+  } else {
+    alert('✅ সেটিংস সেভ হয়েছে!');
+  }
 }
 
 /* ================== UTILS ================== */
