@@ -989,23 +989,27 @@ ${snippet}
     // Get available models
     let available = await getModels(settings.geminiKey);
     let tryModels = [];
-    // ONLY TEXT models that support TEXT modality - EXCLUDE TTS
+    // ✅ TESTED WORKING MODELS FOR NEW AQ. KEYS (Oct 2026) - gemini-3.5-flash-lite WORKS!
     const highQuotaModels = [
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-002',
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-001',
-      'gemini-2.0-flash-lite',
-      'gemini-1.5-pro-latest',
-      'gemini-1.5-pro',
-      'gemini-1.5-pro-002',
+      'gemini-3.5-flash-lite',         // ✅ TESTED WORKING with AQ.Ab8RN6Kj... key!
+      'gemini-3.5-flash',              // ✅ Should work
+      'gemini-flash-latest',           // ✅ Alias
+      'gemini-flash-lite-latest',      // ✅ Alias
+      'gemini-pro-latest',             // ✅ Alias
+      'gemini-2.5-flash-lite',         // Try
+      'gemini-3-flash-preview',        // Try
+      'gemini-3.6-flash',
+      'gemini-3.7-flash',
+      'gemini-3.8-flash',
+      'gemini-1.5-flash-latest',       // Old
       'gemini-pro',
       'gemini-1.0-pro'
     ];
     const lowQuotaModels = [
-      'gemini-2.5-flash',
-      'gemini-2.5-pro'
+      'gemini-2.5-flash',              // May say not available to new users
+      'gemini-2.5-pro',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash'
     ];
     // NEVER include TTS models
     const bannedModels = ['tts','preview-tts','audio','image','embedding'];

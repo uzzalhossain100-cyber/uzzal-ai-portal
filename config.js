@@ -12,7 +12,7 @@ window.SUPABASE_CONFIG = {
   // Or set via Settings UI
   geminiKey: "",
   
-  model: "gemini-2.5-flash"
+  model: "gemini-3.5-flash-lite"
 };
 
 // Try to load from Vercel API (secure)
