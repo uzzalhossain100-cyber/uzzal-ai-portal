@@ -199,9 +199,13 @@
     </div>
     <div class="p-5 space-y-4">
       <div class="bg-violet-50 border-2 border-violet-200 rounded-xl p-3">
-        <label class="text-xs font-bold">Gemini API Key *</label>
-        <input id="setGemini" type="text" placeholder="AIza..." class="w-full mt-1 px-3 py-2.5 border-2 border-violet-200 rounded-xl text-sm font-mono">
-        <div class="text-[11px] mt-1">aistudio.google.com/app/apikey থেকে নিন</div>
+        <label class="text-xs font-bold">Gemini API Key(s) * - একাধিক Key দিলে Quota শেষ হলে Auto Rotation হবে</label>
+        <textarea id="setGemini" rows="2" placeholder="AIza... (একাধিক Key হলে কমা দিয়ে আলাদা করুন, যেমন: Key1, Key2, Key3)" class="w-full mt-1 px-3 py-2.5 border-2 border-violet-200 rounded-xl text-xs font-mono"></textarea>
+        <div class="text-[11px] mt-1 space-y-1">
+          <div>📍 <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-violet-600 underline font-bold">aistudio.google.com/app/apikey</a> থেকে নিন</div>
+          <div>💡 <b>Quota শেষ?</b> নতুন Google Account দিয়ে আরেকটি Key বানিয়ে কমা দিয়ে এখানে যোগ করুন। যেমন: <code class="bg-white px-1 border rounded">Key1, Key2</code></div>
+          <div>🔥 <b>Best Model for Free:</b> gemini-1.5-flash-latest (দিনে 1500 টা), gemini-2.0-flash (1500), gemini-2.5-flash (20) - তাই 1.5 ব্যবহার করুন</div>
+        </div>
       </div>
       <div>
         <label class="text-xs font-bold">Model</label>
@@ -783,13 +787,23 @@ function clearAllAI(){ selectedIds.clear(); renderAISelector(); }
 function setCmd(t){ document.getElementById('aiCommand').value=t; }
 
 async function getModels(key){
+  // Support multiple keys - use first valid
+  const keys = key.split(',').map(k=>k.trim()).filter(k=>k.startsWith('AIza'));
+  const useKey = keys[0] || key;
   try{
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${useKey}`);
     if(!r.ok) return [];
     const d = await r.json();
     return (d.models||[]).filter(m=>m.supportedGenerationMethods?.includes('generateContent')).map(m=>m.name.replace('models/',''));
   }catch(e){ return []; }
 }
+
+function getApiKeys(){
+  const raw = settings.geminiKey || '';
+  const keys = raw.split(',').map(k=>k.trim()).filter(k=>k.startsWith('AIza'));
+  return keys.length>0 ? keys : [raw];
+}
+
 
 async function generateReport(){
   const cmd = document.getElementById('aiCommand').value.trim();
@@ -834,28 +848,48 @@ ${snippet}
     // Get available models
     let available = await getModels(settings.geminiKey);
     let tryModels = [];
+    // Prioritize models with higher free quota
+    const highQuotaModels = ['gemini-1.5-flash-latest','gemini-1.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-pro-latest','gemini-pro','gemini-1.0-pro'];
+    const lowQuotaModels = ['gemini-2.5-flash','gemini-2.5-pro','gemini-2.0-flash-exp'];
+    
     if(settings.model && settings.model!=='auto') tryModels.push(settings.model);
+    // Try high quota models first
+    tryModels.push(...highQuotaModels);
     if(available.length>0){
-      const flash = available.filter(m=>m.includes('flash'));
-      tryModels.push(...flash, ...available);
+      const flash = available.filter(m=>m.includes('flash') && !m.includes('2.5'));
+      tryModels.push(...flash);
     }
+    tryModels.push(...lowQuotaModels);
     tryModels.push('gemini-2.0-flash','gemini-1.5-flash-latest','gemini-1.5-flash','gemini-pro','gemini-1.0-pro');
     tryModels = [...new Set(tryModels)];
     
+    const apiKeys = getApiKeys();
+    console.log(`Trying ${tryModels.length} models with ${apiKeys.length} API keys`);
+    
     let lastErr=null;
+    const apiKeys = getApiKeys();
+    // Try each model with each API key
     for(const m of tryModels){
-      try{
-        status.textContent=`🔍 Trying model: ${m}...`;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${settings.geminiKey}`;
+      for(const apiKey of apiKeys){
+        try{
+          status.textContent=`🔍 Trying model: ${m} with Key ${apiKeys.indexOf(apiKey)+1}/${apiKeys.length}...`;
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
         const res = await fetch(url, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.7, maxOutputTokens:8192}})
         });
-        if(!res.ok){
+            if(!res.ok){
           const txt = await res.text();
           if(res.status===404){ lastErr=txt; continue; }
-          throw new Error(`${res.status}: ${txt.slice(0,500)}`);
+          if(res.status===429){
+            console.warn(`Model ${m} quota exceeded (429), trying next model...`);
+            lastErr = new Error(`429 Quota exceeded for ${m}`);
+            // Try next model that might have quota
+            status.textContent = `⚠️ ${m} এর Quota শেষ (20/day), অন্য মডেল Try করা হচ্ছে...`;
+            continue;
+          }
+          throw new Error(`${res.status}: ${txt.slice(0,800)}`);
         }
         const data = await res.json();
         const txt = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -864,20 +898,38 @@ ${snippet}
         document.getElementById('aiResult').innerHTML = marked.parse(txt);
         document.getElementById('aiResultCard').classList.remove('hidden');
         status.className='mt-3 p-3 rounded-xl text-xs bg-emerald-50 border border-emerald-200 text-emerald-700';
-        status.textContent=`✅ রিপোর্ট তৈরি হয়েছে! Model: ${m}`;
+        status.textContent=`✅ রিপোর্ট তৈরি হয়েছে! Model: ${m} (Key ${apiKeys.indexOf(apiKey)+1})`;
         reportsCount++; localStorage.setItem('uzzal_reports_count', reportsCount.toString());
         updateStats();
-        break;
+        return; // Success, exit both loops
       }catch(e){
         lastErr=e;
-        if(e.message.includes('404')||e.message.includes('not found')) continue;
+        if(e.message.includes('404')||e.message.includes('not found')||e.message.includes('429')||e.message.includes('quota')||e.message.includes('Quota')) continue;
         throw e;
       }
-    }
+      } // End apiKey loop
+    } // End model loop
     if(!lastReport && lastErr) throw lastErr;
   }catch(e){
-    status.className='mt-3 p-3 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700';
-    status.textContent='❌ Error: '+e.message;
+    let msg = e.message;
+    let friendlyMsg = '';
+    if(msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('Quota exceeded')){
+      friendlyMsg = `
+❌ Free Quota শেষ! (দিনে 20 টা রিপোর্ট)
+
+🔧 সমাধান:
+1. 14 ঘণ্টা পর আবার Try করুন (Error এ 13h58m বলেছে)
+2. নতুন API Key বানান: aistudio.google.com/app/apikey → নতুন Google Account দিয়ে
+3. Settings → Model → gemini-1.5-flash-latest সিলেক্ট করুন (দিনে 1500 টা ফ্রি)
+4. Billing Enable করুন: console.cloud.google.com → Billing → Enable (তাহলে Unlimited)
+
+বর্তমান Error: ${msg.slice(0,600)}
+`;
+    } else {
+      friendlyMsg = '❌ Error: ' + msg;
+    }
+    status.className='mt-3 p-3 rounded-xl text-xs bg-red-50 border border-red-200 text-red-700 whitespace-pre-wrap';
+    status.textContent=friendlyMsg;
   }finally{
     btn.disabled=false; btn.textContent='✨ রিপোর্ট তৈরি করুন';
   }
