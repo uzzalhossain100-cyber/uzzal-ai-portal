@@ -1,0 +1,15 @@
+# Secure - Don't push real keys to GitHub
+config.local.js
+.env
+.env.local
+*.key
+
+# Dependencies
+node_modules/
+dist/
+.next/
+out/
+
+# OS
+.DS_Store
+Thumbs.db

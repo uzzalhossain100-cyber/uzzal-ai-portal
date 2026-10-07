@@ -243,7 +243,7 @@ let reportsCount = parseInt(localStorage.getItem('uzzal_reports_count')||'0');
 let supabaseClient = null;
 let isLiveMode = false;
 
-// Auto-load Supabase config from config.js if available
+// Auto-load Supabase & Gemini config from config.js (supports both AIza and AQ keys)
 if(window.SUPABASE_CONFIG){
   if(window.SUPABASE_CONFIG.url && window.SUPABASE_CONFIG.url.includes('supabase.co')){
     settings.supabaseUrl = window.SUPABASE_CONFIG.url;
@@ -251,8 +251,12 @@ if(window.SUPABASE_CONFIG){
   if(window.SUPABASE_CONFIG.anonKey && window.SUPABASE_CONFIG.anonKey.startsWith('eyJ')){
     settings.supabaseKey = window.SUPABASE_CONFIG.anonKey;
   }
-  if(window.SUPABASE_CONFIG.geminiKey && window.SUPABASE_CONFIG.geminiKey.startsWith('AIza')){
+  if(window.SUPABASE_CONFIG.geminiKey && window.SUPABASE_CONFIG.geminiKey.length > 20){
     settings.geminiKey = window.SUPABASE_CONFIG.geminiKey;
+    console.log('✅ Gemini Key loaded from config.js:', settings.geminiKey.slice(0,20)+'...');
+  }
+  if(window.SUPABASE_CONFIG.model){
+    settings.model = window.SUPABASE_CONFIG.model;
   }
   localStorage.setItem('uzzal_settings', JSON.stringify(settings));
 }
@@ -1014,8 +1018,23 @@ ${snippet}
     
     let lastErr=null;
     const apiKeys = getApiKeys();
+    // HARD BLOCK TTS MODELS - NEVER TRY THEM
+    tryModels = tryModels.filter(m=>{
+      const lm = m.toLowerCase();
+      if(lm.includes('tts') || lm.includes('preview-tts') || lm.includes('audio') || lm.includes('image')) {
+        console.warn(`🚫 BLOCKED TTS/AUDIO model: ${m} - will not try`);
+        return false;
+      }
+      return true;
+    });
+    
     // Try each model with each API key
     for(const m of tryModels){
+      // Extra safety - skip TTS even if somehow in list
+      if(m.toLowerCase().includes('tts') || m.toLowerCase().includes('preview-tts')){
+        console.warn(`🚫 Skipping TTS model: ${m}`);
+        continue;
+      }
       for(const apiKey of apiKeys){
         try{
           status.textContent=`🔍 Trying model: ${m} with Key ${apiKeys.indexOf(apiKey)+1}/${apiKeys.length}...`;
