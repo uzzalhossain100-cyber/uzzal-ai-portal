@@ -1264,14 +1264,16 @@ async function saveSettings(){
   const sbUrl = document.getElementById('setSbUrl').value.trim();
   const sbKey = document.getElementById('setSbKey').value.trim();
   
-  // Validate Gemini Key if provided
+  // Validate Gemini Key if provided - Allow both AIza and AQ (new format)
   if(geminiRaw){
-    const statusEl = document.getElementById('urlStatus') || document.createElement('div');
-    // Quick validation
     const keys = geminiRaw.split(',').map(k=>k.trim()).filter(k=>k);
     for(const k of keys){
-      if(!k.startsWith('AIza')){
-        alert(`❌ API Key ভুল! "${k.slice(0,20)}..." AIza... দিয়ে শুরু হতে হবে`);
+      if(!k.startsWith('AIza') && !k.startsWith('AQ.')){
+        alert(`❌ API Key ভুল! "${k.slice(0,20)}..." AIza... বা AQ. দিয়ে শুরু হতে হবে\n\nসঠিক Key: https://aistudio.google.com/app/apikey`);
+        return;
+      }
+      if(k.length < 20){
+        alert(`❌ API Key খুব ছোট! পুরোটা কপি করুন`);
         return;
       }
     }
